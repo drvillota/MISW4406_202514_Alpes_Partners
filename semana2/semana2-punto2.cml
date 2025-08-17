@@ -24,15 +24,23 @@ Domain GestionAsociaciones {
 }
 
 /* Contextos de marketing*/
-BoundedContext ContextoAfiliados implements MarketingAfiliados
+BoundedContext ContextoAfiliados implements MarketingAfiliados {
+  domainVisionStatement = "Gestiona el ciclo de vida  de los programas de afilicación sobre una suite de soluciones"
+}
 
-BoundedContext ContextoAInfluencers implements MarketingInfluencersyContenido
+BoundedContext ContextoAInfluencers implements MarketingInfluencersyContenido {
+  domainVisionStatement = "Orquesta campañas de marcas con miles de influencers verificados."
+}
 
 /* Programas de lealtad - SOPORTE */
-BoundedContext ContextoGestionAlianzas implements GestionAlianzas
+BoundedContext ContextoGestionAlianzas implements GestionAlianzas {
+  domainVisionStatement = "Administra el ciclo de vida de alianzas, incluyendo contratos, pagos, análisis financiero y cumplimiento normativo."
+}
 
 /* Plataforma de Gestión de Alianzas - CORE */
-BoundedContext ContextoProgramasLealtad implements ProgramasLealtad
+BoundedContext ContextoProgramasLealtad implements ProgramasLealtad {
+  domainVisionStatement = "Activa redes de empleados y clientes leales como embajadores de marca."
+}
 
 ContextMap AlpesPartnersTOBE  {
 
