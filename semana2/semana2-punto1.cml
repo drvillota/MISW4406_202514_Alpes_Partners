@@ -1,0 +1,55 @@
+Domain GestionAsociaciones {
+  domainVisionStatement = "Ofrecer una suite de soluciones orientadas a gestionar el ciclo de vida completo de las asociaciones estratégicas."
+
+  Subdomain MarketingAfiliados {
+    type = CORE_DOMAIN
+    domainVisionStatement = "Automatiza la creación y gestión de programas de afiliación."
+  }
+
+  Subdomain MarketingInfluencersyContenido {
+    type = CORE_DOMAIN
+    domainVisionStatement = "Conecta marcas con miles de influencers verificados."
+  }
+
+  Subdomain GestionAlianzas {
+    type = CORE_DOMAIN
+    domainVisionStatement = "Administra el ciclo de vida de alianzas, incluyendo contratos, pagos, análisis financiero y cumplimiento normativo."
+  }
+
+  Subdomain ProgramasLealtad {
+    type = SUPPORTING_DOMAIN
+    domainVisionStatement = "Activa redes de empleados y clientes leales como embajadores de marca."
+  }
+
+}
+
+/* Contextos de marketing*/
+BoundedContext ContextoMarketing implements MarketingAfiliados, MarketingInfluencersyContenido {
+  domainVisionStatement = "Gestión de programas de afiliación e influencers detro de un mismo bloque."
+}
+
+/* Programas de lealtad - SOPORTE */
+BoundedContext ContextoGestionAlianzas implements GestionAlianzas {
+  domainVisionStatement = "Administra el ciclo de vida de alianzas, incluyendo contratos, pagos, análisis financiero y cumplimiento normativo."
+}
+
+/* Plataforma de Gestión de Alianzas - CORE */
+BoundedContext ContextoProgramasLealtad implements ProgramasLealtad {
+      domainVisionStatement = "Activa redes de empleados y clientes leales como embajadores de marca."
+}
+
+ContextMap AlpesPartners {
+
+  state = AS_IS
+ 
+
+	contains ContextoMarketing
+	contains ContextoGestionAlianzas
+	contains ContextoProgramasLealtad
+
+
+	ContextoMarketing [D] <- [U] ContextoGestionAlianzas
+
+	ContextoMarketing [SK] <-> [SK] ContextoProgramasLealtad
+	
+}

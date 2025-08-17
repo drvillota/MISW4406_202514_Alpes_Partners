@@ -22,13 +22,11 @@ Domain GestionAsociaciones {
   }
 
 }
-BoundedContext ContextoMarketing implements MarketingAfiliados, MarketingInfluencersyContenido
 
-/* Marketing de Afiliados - CORE */
-BoundedContext ContextoMarketingAfiliados implements MarketingAfiliados
+/* Contextos de marketing*/
+BoundedContext ContextoAfiliados implements MarketingAfiliados
 
-/* Marketing de Influencers y Creadores de Contenido - CORE */
-BoundedContext ContextoMarketingInfluencersyContenido implements MarketingInfluencersyContenido
+BoundedContext ContextoAInfluencers implements MarketingInfluencersyContenido
 
 /* Programas de lealtad - SOPORTE */
 BoundedContext ContextoGestionAlianzas implements GestionAlianzas
@@ -36,22 +34,21 @@ BoundedContext ContextoGestionAlianzas implements GestionAlianzas
 /* Plataforma de Gestión de Alianzas - CORE */
 BoundedContext ContextoProgramasLealtad implements ProgramasLealtad
 
-ContextMap AlpesPartners {
+ContextMap AlpesPartnersTOBE  {
 
-	contains ContextoMarketingAfiliados
-	contains ContextoMarketingInfluencersyContenido
+  state = TO_BE
+ 
+	contains ContextoAfiliados
+	contains ContextoAInfluencers
 	contains ContextoGestionAlianzas
 	contains ContextoProgramasLealtad
 
-	ContextoMarketingAfiliados [SK] <-> [SK] ContextoMarketingInfluencersyContenido
 
-	ContextoMarketingAfiliados [D] <- [U] ContextoGestionAlianzas
+	ContextoAfiliados [D, ACL] <- [U, OHS] ContextoGestionAlianzas
+	ContextoAInfluencers [D, ACL] <- [U, OHS] ContextoGestionAlianzas
 
-	ContextoMarketingInfluencersyContenido [D] <- [U] ContextoGestionAlianzas
+	ContextoAfiliados [U, PL, OHS] -> [D] ContextoProgramasLealtad
+	ContextoAInfluencers [U, PL, OHS] -> [D] ContextoProgramasLealtad
 
-	ContextoMarketingAfiliados [U] -> [D] ContextoProgramasLealtad
-
-	ContextoMarketingInfluencersyContenido [U] -> [D] ContextoProgramasLealtad
 	
 }
-
