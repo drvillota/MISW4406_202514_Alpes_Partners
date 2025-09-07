@@ -1,0 +1,6 @@
+from __future__ import annotations
+from typing import Protocol, Iterable, Optional, Any
+
+class Repository(Protocol):
+    def add(self, entity: Any) -> None: ...
+    def get(self, entity_id) -> Optional[Any]: ...
