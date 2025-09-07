@@ -1,7 +1,6 @@
 from __future__ import annotations
 import asyncio
 from fastapi import FastAPI
-from . import main as _main  # to satisfy module structure
 from ..infrastructure.config import UVICORN_PORT
 from ..infrastructure.db.sqlalchemy import Base, engine, SessionLocal
 from ..infrastructure.db.repositories import AfiliadoRepoSQL, ConversionRepoSQL, ComisionRepoSQL

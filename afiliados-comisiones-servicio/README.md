@@ -70,9 +70,6 @@ flowchart LR
 
 ## Correr con Docker
 
-1) Copie `.env.example` a `.env` y ajústelo si desea.
-2) Levante dependencias y servicio:
-
 ```bash
 docker compose up -d --build
 ```
