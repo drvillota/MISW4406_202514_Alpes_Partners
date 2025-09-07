@@ -31,43 +31,6 @@ y publicación de eventos de integración vía **RabbitMQ**.
 - **Configuración**: `.env` + variables de entorno.
 - **Docker Compose**: Postgres, RabbitMQ y servicio.
 
-### Diagrama (mermaid)
-```mermaid
-flowchart LR
-  subgraph Service["Servicio Afiliados/Comisiones (Hexagonal)"]
-    subgraph Entrypoints[Entrypoints]
-      API[FastAPI REST]
-    end
-    subgraph Application[Aplicación (CQS)]
-      CMD[RegistrarConversionCommand]
-      QRY[ConsultarComisionesPorAfiliadoQuery]
-      BUS[MessageBus]
-    end
-    subgraph Domain[Dominio]
-      AF[Afiliado]
-      CV[Conversion]
-      CM[Comision]
-      EV1((ConversionRegistrada))
-      EV2((ComisionCreada))
-      POL[Politica: calcular comisión]
-    end
-    subgraph Infra[Infraestructura (Adaptadores) ]
-      DB[(PostgreSQL)]
-      RMQ[(RabbitMQ)]
-      Repos[SQLAlchemy Repos]
-      Pub[PublicadorIntegracion]
-    end
-    API --> CMD --> BUS
-    API --> QRY --> BUS
-    BUS --> EV1
-    EV1 --> POL --> CM --> EV2
-    Repos <--> DB
-    Pub --> RMQ
-  end
-```
-
----
-
 ## Correr con Docker
 
 ```bash
@@ -106,24 +69,20 @@ curl "http://localhost:8080/affiliates/<UUID_DEL_AFILIADO>/commissions?desde=&ha
 
 ```
 src/
-  app/main.py                 # FastAPI + bootstrap
-  core/seedwork/              # Eventos, comandos, bus, UoW, repos (puertos)
-  domains/affiliates/         # Dominio de afiliados (entidad + repo)
-  domains/commissions/        # Dominio de comisiones (agregado + eventos + políticas + repos)
-  application/                # Commands/Queries + handlers
-  infrastructure/
-    db/                       # SQLAlchemy + modelos + repos
-    messaging/                # Publicación a RabbitMQ (eventos de integración)
-    config.py                 # Carga de configuración
-  entrypoints/fastapi/        # Rutas / DTOs
+├── app/
+│   └── main.py                 # FastAPI + bootstrap
+├── core/
+│   └── seedwork/               # Eventos, comandos, bus, UoW, repos (puertos)
+├── domains/
+│   ├── affiliates/             # Dominio de afiliados (entidad + repo)
+│   └── commissions/            # Dominio de comisiones (agregado + eventos + políticas + repos)
+├── application/                # Commands/Queries + handlers
+├── infrastructure/
+│   ├── db/                     # SQLAlchemy + modelos + repos
+│   ├── messaging/              # Publicación a RabbitMQ (eventos de integración)
+│   └── config.py               # Carga de configuración
+└── entrypoints/
+  └── fastapi/                # Rutas / DTOs
 ```
 
----
-
-## Decisiones clave
-
-- **DB por servicio (PostgreSQL)** y **broker** (RabbitMQ), consistencia **eventual** entre bounded contexts.
-- **Eventos de dominio** para desacoplar módulos y **eventos de integración** para otros servicios.
-- **Repositorios** como puertos (hexagonal) + implementaciones SQLAlchemy.
-- **CQS** para separar efectos (comandos) de lecturas (consultas).
 
