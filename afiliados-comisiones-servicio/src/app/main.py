@@ -1,5 +1,8 @@
 from __future__ import annotations
 import asyncio
+from contextlib import asynccontextmanager
+from typing import Any
+
 from fastapi import FastAPI
 from ..infrastructure.config import UVICORN_PORT
 from ..infrastructure.db.sqlalchemy import Base, engine, SessionLocal
@@ -9,7 +12,26 @@ from ..application.handlers import register_handlers
 from ..entrypoints.fastapi.routes import router
 import uvicorn
 
-app = FastAPI(title="Afiliados — Comisiones por Evento (DDD/EDA/Hex)")
+from ..infrastructure.messaging.consumidores import suscribirse_a_topico
+from ..domains.pulsar.eventos import EventoPago
+
+
+
+app_configs: dict[str, Any] = {"title": "Afiliados — Comisiones por Evento (DDD/EDA/Hex)"}
+tasks = []
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    task1 = asyncio.create_task(suscribirse_a_topico("evento-pago", "sub-pagos", EventoPago))
+    tasks.extend([task1])
+
+    yield
+
+    for task in tasks:
+        task.cancel()
+
+
+app = FastAPI(lifespan=lifespan, **app_configs)
 app.include_router(router)
 
 # Exponer handler de consulta para rutas (ver ruta GET)
