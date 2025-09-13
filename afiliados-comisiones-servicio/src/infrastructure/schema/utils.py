@@ -1,6 +1,7 @@
 import time
 import os
 import datetime
+import json  # Añadir esta línea - faltaba
 import requests
 from fastavro.schema import parse_schema
 from pulsar.schema import *

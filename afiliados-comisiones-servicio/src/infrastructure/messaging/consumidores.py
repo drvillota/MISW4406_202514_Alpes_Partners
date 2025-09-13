@@ -1,10 +1,11 @@
 import logging
 import traceback
 import pulsar, _pulsar
+import asyncio
 import aiopulsar
 import asyncio
 from pulsar.schema import *
-from schema import utils
+from ..schema import utils
 
 async def suscribirse_a_topico(topico: str, suscripcion: str, schema: Record, tipo_consumidor:_pulsar.ConsumerType=_pulsar.ConsumerType.Shared):
     try:
