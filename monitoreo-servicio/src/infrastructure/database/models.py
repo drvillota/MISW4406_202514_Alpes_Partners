@@ -20,7 +20,7 @@ class EventModel(Base):
     event_type: Mapped[EventTypeEnum] = mapped_column(Enum(EventTypeEnum), nullable=False)
     user_id: Mapped[str] = mapped_column(UUID(as_uuid=True), nullable=False)
     session_id: Mapped[str] = mapped_column(String(255), nullable=False)
-    metadata: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    event_data: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)  # Cambié metadata por event_data
     occurred_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
     

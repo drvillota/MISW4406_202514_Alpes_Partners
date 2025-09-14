@@ -77,7 +77,7 @@ services:
       - managedLedgerDefaultWriteQuorum=1
       - managedLedgerDefaultAckQuorum=1
       - advertisedAddress=broker
-      - advertisedListeners=external:pulsar://127.0.0.1:6650
+      - advertisedListeners=external:pulsar://broker:6650
     depends_on:
       zookeeper:
         condition: service_healthy
@@ -139,6 +139,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - pulsar
   monitoreo:
     container_name: monitoreo
     hostname: monitoreo

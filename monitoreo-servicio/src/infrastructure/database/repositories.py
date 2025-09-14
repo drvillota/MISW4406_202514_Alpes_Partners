@@ -21,7 +21,7 @@ class EventRepositorySQL(EventRepository):
             event_type=EventTypeEnum(entity.event_type.value),
             user_id=entity.user_id,
             session_id=entity.session_id,
-            metadata=entity.metadata,
+            event_data=entity.metadata,  # Cambié metadata por event_data
             occurred_at=entity.occurred_at
         )
         self.session.add(event_model)
@@ -36,7 +36,7 @@ class EventRepositorySQL(EventRepository):
             event_type=EventType(model.event_type.value),
             user_id=model.user_id,
             session_id=model.session_id,
-            metadata=model.metadata,
+            metadata=model.event_data,  # Cambié model.metadata por model.event_data
             occurred_at=model.occurred_at
         )
 

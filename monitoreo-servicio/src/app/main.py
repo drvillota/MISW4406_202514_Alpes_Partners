@@ -81,9 +81,9 @@ async def lifespan(app: FastAPI):
     logger.info("Application shutdown complete")
 
 app_configs: dict[str, Any] = {
-    "title": f"{settings.APP_NAME} - Analytics & Monitoring Service",
+    "title": "Monitoreo Service - Analytics & Monitoring Service",
     "description": "Servicio de monitoreo y análisis de eventos (conversiones, clicks, ventas)",
-    "version": settings.APP_VERSION
+    "version": "1.0.0"
 }
 
 app = FastAPI(lifespan=lifespan, **app_configs)
@@ -94,6 +94,6 @@ if __name__ == "__main__":
         "src.app.main:app", 
         host=settings.UVICORN_HOST, 
         port=settings.UVICORN_PORT, 
-        reload=settings.is_development,
-        log_level=settings.LOG_LEVEL.lower()
+        reload=settings.DEBUG,  # Usar DEBUG en lugar de is_development
+        log_level="info"  # Valor fijo en lugar de settings.LOG_LEVEL
     )

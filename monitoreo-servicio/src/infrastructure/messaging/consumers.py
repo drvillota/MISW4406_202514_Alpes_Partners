@@ -1,5 +1,6 @@
 import logging
 import traceback
+import pulsar, _pulsar
 import asyncio
 from typing import Callable, Any
 import aiopulsar
@@ -67,10 +68,10 @@ class EventConsumerService:
     ):
         """Método genérico para consumir de un tópico específico"""
         try:
-            async with aiopulsar.connect(f'pulsar://{settings.effective_pulsar_host}:6650') as client:
+            async with aiopulsar.connect(f'{settings.pulsar_url}') as client:
                 async with client.subscribe(
                     topic,
-                    consumer_type=aiopulsar.ConsumerType.Shared,
+                    consumer_type=_pulsar.ConsumerType.Shared,
                     subscription_name=subscription,
                     schema=AvroSchema(schema)
                 ) as consumer:
