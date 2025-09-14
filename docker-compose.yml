@@ -125,3 +125,38 @@ services:
       - BROKER_HOST=broker
     ports:
       - "8081:8080"
+
+  db-monitoreo:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: monitoreo
+      POSTGRES_USER: monitoreo
+      POSTGRES_PASSWORD: monitoreo
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U monitoreo"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  monitoreo:
+    container_name: monitoreo
+    hostname: monitoreo
+    build:
+      context: ./monitoreo-servicio
+      dockerfile: monitoreo.Dockerfile
+    profiles: ["monitoreo", "pulsar"]
+    networks:
+      - pulsar
+    depends_on:
+      - broker
+      - db-monitoreo
+    environment:
+      - APP_ENV=dev
+      - DATABASE_URL=postgresql+psycopg2://monitoreo:monitoreo@db-monitoreo:5432/monitoreo
+      - UVICORN_PORT=8080
+      - AEROALPES_ADDRESS=aeroalpes
+      - BROKER_HOST=broker
+    ports:
+      - "8082:8080"
+
