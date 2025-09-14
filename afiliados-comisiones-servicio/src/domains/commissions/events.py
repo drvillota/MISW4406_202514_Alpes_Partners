@@ -33,3 +33,33 @@ class ComisionCreada(DomainEvent):
         self.affiliate_id = affiliate_id
         self.valor = valor
         self.moneda = moneda
+
+@dataclass
+class ComisionPagada(DomainEvent):
+    """Evento emitido cuando se paga una comisión"""
+    commission_id: UUID
+    affiliate_id: UUID
+    valor: float
+    fecha_pago: datetime
+
+    def __init__(self, commission_id: UUID, affiliate_id: UUID, valor: float, fecha_pago: datetime):
+        super().__init__(name="ComisionPagada")
+        self.commission_id = commission_id
+        self.affiliate_id = affiliate_id
+        self.valor = valor
+        self.fecha_pago = fecha_pago
+
+@dataclass
+class ComisionCancelada(DomainEvent):
+    """Evento emitido cuando se cancela una comisión"""
+    commission_id: UUID
+    affiliate_id: UUID
+    motivo: str
+    fecha_cancelacion: datetime
+
+    def __init__(self, commission_id: UUID, affiliate_id: UUID, motivo: str, fecha_cancelacion: datetime):
+        super().__init__(name="ComisionCancelada")
+        self.commission_id = commission_id
+        self.affiliate_id = affiliate_id
+        self.motivo = motivo
+        self.fecha_cancelacion = fecha_cancelacion
