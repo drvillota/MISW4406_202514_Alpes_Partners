@@ -91,7 +91,7 @@ services:
     command: bash -c "bin/apply-config-from-env.py conf/broker.conf
       &&  exec bin/pulsar broker"
   
-  db:
+  db-afiliados-comisiones:
     image: postgres:15-alpine
     environment:
       POSTGRES_DB: afiliados
@@ -104,22 +104,24 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - pulsar
 
   afiliados-comisiones:
     container_name: afiliados-comisiones
     hostname: afiliados-comisiones
     build:
       context: ./afiliados-comisiones-servicio
-      dockerfile: afilidados-comisiones.Dockerfile
+      dockerfile: afiliados-comisiones.Dockerfile
     profiles: ["afiliados-comisiones", "pulsar"]
     networks:
       - pulsar
     depends_on:
       - broker
-      - db
+      - db-afiliados-comisiones
     environment:
       - APP_ENV=dev
-      - DATABASE_URL=postgresql+psycopg2://afiliados:afiliados@db:5432/afiliados
+      - DATABASE_URL=postgresql+psycopg2://afiliados:afiliados@db-afiliados-comisiones:5432/afiliados
       - UVICORN_PORT=8080
       - AEROALPES_ADDRESS=aeroalpes
       - BROKER_HOST=broker

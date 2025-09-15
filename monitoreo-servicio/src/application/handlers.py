@@ -1,7 +1,7 @@
 from __future__ import annotations
 import logging
 from datetime import datetime, timedelta
-from uuid import uuid4
+from uuid import uuid4, UUID
 from .commands import RecordEventCommand
 from .queries import GetMetricsQuery, GetEventsQuery
 from ..domains.events.entities import Event, EventType
@@ -22,7 +22,7 @@ class EventHandler:
         event = Event(
             id=uuid4(),
             event_type=EventType(command.event_type),
-            user_id=command.user_id,
+            user_id=UUID(command.user_id),
             session_id=command.session_id,
             metadata=command.metadata,
             occurred_at=command.occurred_at

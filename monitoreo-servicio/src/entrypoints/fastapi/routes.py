@@ -26,7 +26,7 @@ async def health_check():
     """Health check endpoint"""
     return HealthResponse(
         status="healthy",
-        service=settings.APP_NAME
+        service="Monitoring"
     )
 
 @router.get("/metrics", response_model=MetricsResponse)

@@ -27,5 +27,5 @@ def consultar_schema_registry(topico: str) -> dict:
 
 def obtener_schema_avro_de_diccionario(json_schema: dict) -> AvroSchema:
     definicion_schema = parse_schema(json_schema)
-    return AvroSchema(None, schema_definition=definicion_schema)
+    return AvroSchema(definicion_schema)
 
