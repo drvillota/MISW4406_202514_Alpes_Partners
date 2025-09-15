@@ -1,0 +1,18 @@
+[project]
+name = "colaboraciones"
+version = "1.0.0"
+authors = [
+  { name="David Ruiz", email="dr.villota@uniandes.edu.co" },
+]
+description = "Microservicio Colaboración con creadores e influencers Alpes Partners"
+readme = "README.md"
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+addopts = [
+    "--import-mode=importlib",
+]
+pythonpath = [
+  ".", "src",
+]
+testpaths = ["tests"]

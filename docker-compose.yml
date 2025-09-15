@@ -164,3 +164,51 @@ services:
     ports:
       - "8082:8080"
 
+  db-colaboraciones:
+    image: mysql:8.0
+    container_name: db-colaboraciones
+    environment:
+      MYSQL_DATABASE: colaboraciones
+      MYSQL_USER: colaboraciones
+      MYSQL_PASSWORD: colaboraciones_pass
+      MYSQL_ROOT_PASSWORD: root_pass
+    ports:
+      - "3306:3306"     # mapa local -> container (opcional)
+    volumes:
+      - ./data/db-colaboraciones:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot_pass"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - pulsar
+    restart: unless-stopped
+
+  colaboraciones:
+    container_name: colaboraciones
+    hostname: colaboraciones
+    build:
+      context: ./colaboraciones
+      dockerfile: colaboraciones.Dockerfile
+    profiles: ["colaboraciones", "pulsar"]
+    networks:
+      - pulsar
+    depends_on:
+      broker:
+        condition: service_started
+      db-colaboraciones:
+        condition: service_healthy
+    environment:
+      # variables que usa src/config/db.py (si NO usas TESTING=true)
+      - APP_ENV=dev
+      - DB_USERNAME=colaboraciones
+      - DB_PASSWORD=colaboraciones_pass
+      - DB_HOSTNAME=db-colaboraciones
+      - DB_NAME=colaboraciones
+      - UVICORN_PORT=8080
+      - BROKER_HOST=broker
+      - TESTING=false
+    ports:
+      - "8083:8080"   # expone el servicio en 8083 local -> 8080 container
+    
