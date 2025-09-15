@@ -1,46 +1,216 @@
-from __future__ import annotations
+"""Repositorios SQLAlchemy simplificados para afiliados-comisiones"""
+
 from uuid import UUID
 from typing import Optional, List
-from sqlalchemy import select, text
+from datetime import datetime
+from decimal import Decimal
+from sqlalchemy import select
 from sqlalchemy.orm import Session
-from ...domains.affiliates.entities import Afiliado
-from ...domains.commissions.entities import Conversion, Comision
-from ...domains.affiliates.repository import AfiliadoRepository
-from ...domains.commissions.repository import ConversionRepository, ComisionRepository
-from .models import AfiliadoModel, ConversionModel, ComisionModel
-from .sqlalchemy import SessionLocal
 
-class AfiliadoRepoSQL(AfiliadoRepository):
-    def __init__(self, session: Session): self.session = session
-    def add(self, entity: Afiliado) -> None:
-        self.session.add(AfiliadoModel(id=entity.id, nombre=entity.nombre, tasa_comision=entity.tasa_comision))
-    def get(self, entity_id: UUID) -> Optional[Afiliado]:
-        m = self.session.get(AfiliadoModel, entity_id)
-        if not m: return None
-        return Afiliado(id=m.id, nombre=m.nombre, tasa_comision=m.tasa_comision)
+# Importar entidades de dominio simplificadas
+from ...domain.entities import Affiliate, Commission, ConversionEvent
 
-class ConversionRepoSQL(ConversionRepository):
-    def __init__(self, session: Session): self.session = session
-    def add(self, entity: Conversion) -> None:
-        self.session.add(ConversionModel(id=entity.id, affiliate_id=entity.affiliate_id, event_type=entity.event_type, monto=entity.monto, moneda=entity.moneda, occurred_at=entity.occurred_at))
-    def get(self, entity_id: UUID) -> Optional[Conversion]:
-        m = self.session.get(ConversionModel, entity_id)
-        if not m: return None
-        return Conversion(id=m.id, affiliate_id=m.affiliate_id, event_type=m.event_type, monto=m.monto, moneda=m.moneda, occurred_at=m.occurred_at)
+# Importar modelos de base de datos
+from .models import AffiliateModel, CommissionModel, ConversionEventModel
 
-class ComisionRepoSQL(ComisionRepository):
-    def __init__(self, session: Session): self.session = session
-    def add(self, entity: Comision) -> None:
-        self.session.add(ComisionModel(id=entity.id, affiliate_id=entity.affiliate_id, conversion_id=entity.conversion_id, valor=entity.valor, moneda=entity.moneda, estado=entity.estado, created_at=entity.created_at))
-    def get(self, entity_id: UUID) -> Optional[Comision]:
-        m = self.session.get(ComisionModel, entity_id)
-        if not m: return None
-        return Comision(id=m.id, affiliate_id=m.affiliate_id, conversion_id=m.conversion_id, valor=m.valor, moneda=m.moneda, estado=m.estado, created_at=m.created_at)
-    def list_by_affiliate(self, affiliate_id: UUID, desde: Optional[str]=None, hasta: Optional[str]=None) -> List[Comision]:
-        q = select(ComisionModel).where(ComisionModel.affiliate_id == affiliate_id)
-        if desde:
-            q = q.where(ComisionModel.created_at >= text(f"'{desde}'"))
-        if hasta:
-            q = q.where(ComisionModel.created_at <= text(f"'{hasta}'"))
-        res = self.session.execute(q).scalars().all()
-        return [Comision(id=m.id, affiliate_id=m.affiliate_id, conversion_id=m.conversion_id, valor=m.valor, moneda=m.moneda, estado=m.estado, created_at=m.created_at) for m in res]
+class AffiliateRepository:
+    """Repositorio simplificado para Afiliados"""
+    
+    def __init__(self, session: Session):
+        self.session = session
+    
+    def save(self, affiliate: Affiliate) -> None:
+        """Guardar afiliado"""
+        model = AffiliateModel(
+            id=affiliate.id,
+            name=affiliate.name,
+            email=affiliate.email,
+            commission_rate=float(affiliate.commission_rate),
+            active=affiliate.active,
+            created_at=affiliate.created_at
+        )
+        self.session.add(model)
+        self.session.commit()
+    
+    def get_by_id(self, affiliate_id: UUID) -> Optional[Affiliate]:
+        """Obtener afiliado por ID"""
+        model = self.session.get(AffiliateModel, affiliate_id)
+        if not model:
+            return None
+            
+        return Affiliate(
+            id=UUID(str(model.id)) if isinstance(model.id, str) else model.id,
+            name=model.name,
+            email=model.email,
+            commission_rate=Decimal(str(model.commission_rate)),
+            created_at=model.created_at,
+            active=model.active
+        )
+    
+    def get_by_email(self, email: str) -> Optional[Affiliate]:
+        """Obtener afiliado por email"""
+        stmt = select(AffiliateModel).where(AffiliateModel.email == email)
+        model = self.session.execute(stmt).scalar_one_or_none()
+        
+        if not model:
+            return None
+            
+        return Affiliate(
+            id=UUID(str(model.id)) if isinstance(model.id, str) else model.id,
+            name=model.name,
+            email=model.email,
+            commission_rate=Decimal(str(model.commission_rate)),
+            created_at=model.created_at,
+            active=model.active
+        )
+    
+    def list_all(self, active_only: bool = False) -> List[Affiliate]:
+        """Listar afiliados"""
+        stmt = select(AffiliateModel)
+        if active_only:
+            stmt = stmt.where(AffiliateModel.active == True)
+            
+        models = self.session.execute(stmt).scalars().all()
+        
+        return [
+            Affiliate(
+                id=UUID(str(model.id)) if isinstance(model.id, str) else model.id,
+                name=model.name,
+                email=model.email,
+                commission_rate=Decimal(str(model.commission_rate)),
+                created_at=model.created_at,
+                active=model.active
+            )
+            for model in models
+        ]
+    
+    def update_status(self, affiliate_id: UUID, active: bool) -> None:
+        """Actualizar estado del afiliado"""
+        model = self.session.get(AffiliateModel, affiliate_id)
+        if model:
+            model.active = active
+            self.session.commit()
+
+class ConversionEventRepository:
+    """Repositorio simplificado para Eventos de Conversión"""
+    
+    def __init__(self, session: Session):
+        self.session = session
+    
+    def save(self, conversion: ConversionEvent) -> None:
+        """Guardar evento de conversión"""
+        model = ConversionEventModel(
+            id=conversion.id,
+            affiliate_id=conversion.affiliate_id,
+            event_type=conversion.event_type,
+            amount=float(conversion.amount),
+            currency=conversion.currency,
+            occurred_at=conversion.occurred_at,
+            processed=conversion.processed
+        )
+        self.session.add(model)
+        self.session.commit()
+    
+    def get_by_id(self, conversion_id: UUID) -> Optional[ConversionEvent]:
+        """Obtener conversión por ID"""
+        model = self.session.get(ConversionEventModel, conversion_id)
+        if not model:
+            return None
+            
+        return ConversionEvent(
+            id=UUID(str(model.id)) if isinstance(model.id, str) else model.id,
+            affiliate_id=UUID(str(model.affiliate_id)) if isinstance(model.affiliate_id, str) else model.affiliate_id,
+            event_type=model.event_type,
+            amount=Decimal(str(model.amount)),
+            occurred_at=model.occurred_at,
+            currency=model.currency,
+            processed=model.processed
+        )
+    
+    def mark_as_processed(self, conversion_id: UUID) -> None:
+        """Marcar conversión como procesada"""
+        model = self.session.get(ConversionEventModel, conversion_id)
+        if model:
+            model.processed = True
+            self.session.commit()
+
+class CommissionRepository:
+    """Repositorio simplificado para Comisiones"""
+    
+    def __init__(self, session: Session):
+        self.session = session
+    
+    def save(self, commission: Commission) -> None:
+        """Guardar comisión"""
+        model = CommissionModel(
+            id=commission.id,
+            affiliate_id=commission.affiliate_id,
+            conversion_id=commission.conversion_id,
+            amount=float(commission.amount),
+            currency=commission.currency,
+            status=commission.status,
+            calculated_at=commission.calculated_at
+        )
+        self.session.add(model)
+        self.session.commit()
+    
+    def get_by_id(self, commission_id: UUID) -> Optional[Commission]:
+        """Obtener comisión por ID"""
+        model = self.session.get(CommissionModel, commission_id)
+        if not model:
+            return None
+            
+        return Commission(
+            id=UUID(str(model.id)) if isinstance(model.id, str) else model.id,
+            affiliate_id=UUID(str(model.affiliate_id)) if isinstance(model.affiliate_id, str) else model.affiliate_id,
+            conversion_id=UUID(str(model.conversion_id)) if isinstance(model.conversion_id, str) else model.conversion_id,
+            amount=Decimal(str(model.amount)),
+            calculated_at=model.calculated_at,
+            currency=model.currency,
+            status=model.status
+        )
+    
+    def list_by_affiliate(
+        self, 
+        affiliate_id: UUID,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None
+    ) -> List[Commission]:
+        """Listar comisiones por afiliado"""
+        stmt = select(CommissionModel).where(CommissionModel.affiliate_id == affiliate_id)
+        
+        if start_date:
+            stmt = stmt.where(CommissionModel.calculated_at >= start_date)
+        if end_date:
+            stmt = stmt.where(CommissionModel.calculated_at <= end_date)
+            
+        models = self.session.execute(stmt).scalars().all()
+        
+        return [
+            Commission(
+                id=UUID(str(model.id)) if isinstance(model.id, str) else model.id,
+                affiliate_id=UUID(str(model.affiliate_id)) if isinstance(model.affiliate_id, str) else model.affiliate_id,
+                conversion_id=UUID(str(model.conversion_id)) if isinstance(model.conversion_id, str) else model.conversion_id,
+                amount=Decimal(str(model.amount)),
+                calculated_at=model.calculated_at,
+                currency=model.currency,
+                status=model.status
+            )
+            for model in models
+        ]
+    
+    def update_status(self, commission_id: UUID, status: str) -> None:
+        """Actualizar estado de comisión"""
+        model = self.session.get(CommissionModel, commission_id)
+        if model:
+            model.status = status
+            self.session.commit()
+
+# Factory para crear repositorios con sesión
+def create_repositories(session: Session):
+    """Crear instancias de todos los repositorios"""
+    return {
+        'affiliate_repo': AffiliateRepository(session),
+        'conversion_repo': ConversionEventRepository(session),
+        'commission_repo': CommissionRepository(session)
+    }

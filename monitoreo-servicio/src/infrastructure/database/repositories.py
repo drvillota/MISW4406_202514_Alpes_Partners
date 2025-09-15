@@ -1,6 +1,6 @@
 from __future__ import annotations
 from uuid import UUID
-from typing import Optional, List
+from typing import Optional, List, Sequence
 from datetime import datetime
 from sqlalchemy import select, func, and_
 from sqlalchemy.orm import Session
@@ -17,9 +17,9 @@ class EventRepositorySQL(EventRepository):
 
     def add(self, entity: Event) -> None:
         event_model = EventModel(
-            id=entity.id,
+            id=str(entity.id),
             event_type=EventTypeEnum(entity.event_type.value),
-            user_id=entity.user_id,
+            user_id=str(entity.user_id),
             session_id=entity.session_id,
             event_data=entity.metadata,  # Cambié metadata por event_data
             occurred_at=entity.occurred_at
@@ -27,14 +27,14 @@ class EventRepositorySQL(EventRepository):
         self.session.add(event_model)
 
     def get(self, entity_id: UUID) -> Optional[Event]:
-        model = self.session.get(EventModel, entity_id)
+        model = self.session.get(EventModel, str(entity_id))
         if not model:
             return None
         
         return Event(
-            id=model.id,
+            id=UUID(model.id),
             event_type=EventType(model.event_type.value),
-            user_id=model.user_id,
+            user_id=UUID(model.user_id),
             session_id=model.session_id,
             metadata=model.event_data,  # Cambié model.metadata por model.event_data
             occurred_at=model.occurred_at
@@ -42,7 +42,7 @@ class EventRepositorySQL(EventRepository):
 
     def exists(self, entity_id: UUID) -> bool:
         return self.session.query(
-            self.session.query(EventModel).filter_by(id=entity_id).exists()
+            self.session.query(EventModel).filter_by(id=str(entity_id)).exists()
         ).scalar()
 
     def delete_older_than(self, cutoff_date: datetime) -> int:
@@ -94,7 +94,7 @@ class EventQueryRepositorySQL(EventQueryRepository):
     def get_user_journey(self, user_id: UUID, start: datetime, end: datetime) -> List[Event]:
         query = select(EventModel).where(
             and_(
-                EventModel.user_id == user_id,
+                EventModel.user_id == str(user_id),
                 EventModel.occurred_at >= start,
                 EventModel.occurred_at <= end
             )
@@ -113,15 +113,15 @@ class EventQueryRepositorySQL(EventQueryRepository):
         
         return (conversion_count / click_count) * 100
 
-    def _models_to_entities(self, models: List[EventModel]) -> List[Event]:
+    def _models_to_entities(self, models: Sequence[EventModel]) -> List[Event]:
         """Convierte modelos de base de datos a entidades de dominio"""
         return [
             Event(
-                id=model.id,
+                id=UUID(model.id),
                 event_type=EventType(model.event_type.value),
-                user_id=model.user_id,
+                user_id=UUID(model.user_id),
                 session_id=model.session_id,
-                metadata=model.metadata,
+                metadata=model.event_data,  # Cambié model.metadata por model.event_data
                 occurred_at=model.occurred_at
             )
             for model in models

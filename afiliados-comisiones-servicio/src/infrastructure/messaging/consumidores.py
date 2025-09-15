@@ -31,6 +31,10 @@ class EventConsumerService:
         """Inicia todos los consumidores concurrentemente"""
         try:
             self.is_running = True
+            
+            # Primero crear los tópicos si no existen
+            await self._ensure_topics_exist()
+            
             self.consumer_tasks = [
                 asyncio.create_task(self.consume_affiliate_events()),
                 asyncio.create_task(self.consume_conversion_events()),
@@ -45,6 +49,34 @@ class EventConsumerService:
             traceback.print_exc()
             await self.stop_all_consumers()
 
+    async def _ensure_topics_exist(self):
+        """Crear tópicos si no existen"""
+        topics_to_create = [
+            "persistent://public/default/affiliate-events",
+            "persistent://public/default/conversion-events", 
+            "persistent://public/default/commission-events"
+        ]
+        
+        try:
+            import aiopulsar
+            client = await aiopulsar.connect(f'pulsar://{broker_host()}:6650')
+            
+            for topic in topics_to_create:
+                try:
+                    # Intentar crear un productor para el tópico (esto lo crea si no existe)
+                    producer = await client.create_producer(topic)
+                    await producer.close()
+                    logger.info(f"Tópico asegurado: {topic}")
+                except Exception as e:
+                    logger.warning(f"No se pudo asegurar tópico {topic}: {e}")
+            
+            await client.close()
+            logger.info("Verificación de tópicos completada")
+            
+        except Exception as e:
+            logger.warning(f"No se pudieron verificar tópicos (Pulsar offline?): {e}")
+            # Continuar sin tópicos - el servicio principal debe funcionar
+
     async def stop_all_consumers(self):
         """Detiene todos los consumidores"""
         logger.info("Stopping all consumers...")
@@ -56,7 +88,8 @@ class EventConsumerService:
                 try:
                     await task
                 except asyncio.CancelledError:
-                    pass
+                    logger.info("Consumer task cancelled during shutdown")
+                    raise
 
     async def consume_affiliate_events(self):
         """Consume eventos relacionados con afiliados"""
@@ -99,7 +132,6 @@ class EventConsumerService:
         while self.is_running and retry_count < max_retries:
             try:
                 await self._consume_topic(topic, subscription, event_mapper, consumer_type)
-                # Si llegamos aquí, la conexión se cerró normalmente
                 break
                 
             except Exception as e:
@@ -107,7 +139,6 @@ class EventConsumerService:
                 logger.error(f"Error consuming from topic {topic} (attempt {retry_count}/{max_retries}): {e}")
                 
                 if retry_count < max_retries:
-                    # Espera exponencial antes del reintento
                     wait_time = min(60, 2 ** retry_count)
                     logger.info(f"Retrying connection to {topic} in {wait_time} seconds...")
                     await asyncio.sleep(wait_time)
@@ -127,22 +158,15 @@ class EventConsumerService:
         consumer = None
         
         try:
-            # Crear cliente con configuración optimizada
-            client = await aiopulsar.connect(
-                f'pulsar://{broker_host()}:6650',
-                connection_timeout_ms=5000,
-                operation_timeout_ms=30000
-            )
+            # Crear cliente con configuración básica
+            client = await aiopulsar.connect(f'pulsar://{broker_host()}:6650')
             
-            # Crear consumidor con configuración robusta
+            # Crear consumidor con parámetros básicos compatibles
             consumer = await client.subscribe(
                 topic,
                 consumer_type=consumer_type,
                 subscription_name=subscription,
-                # schema=AvroSchema(schema),  # Se puede agregar schema aquí
-                initial_position=pulsar.InitialPosition.Earliest,
-                consumer_name=f"{subscription}-{asyncio.current_task().get_name()}",
-                receive_queue_size=1000
+                initial_position=pulsar.InitialPosition.Earliest
             )
             
             logger.info(f"Successfully connected to topic: {topic} with subscription: {subscription}")
@@ -152,19 +176,17 @@ class EventConsumerService:
                     # Recibir mensaje con timeout
                     message = await asyncio.wait_for(
                         consumer.receive(), 
-                        timeout=30.0  # 30 segundos de timeout
+                        timeout=30.0
                     )
                     
                     # Procesar el mensaje
                     await self._process_message(message, consumer, event_mapper)
                     
                 except asyncio.TimeoutError:
-                    # Timeout normal, continuar
                     continue
                     
                 except Exception as e:
                     logger.error(f'Error processing message from {topic}: {e}')
-                    # En caso de error de procesamiento, continuar con el siguiente mensaje
                     continue
                     
         except Exception as e:
@@ -176,14 +198,14 @@ class EventConsumerService:
             if consumer:
                 try:
                     await consumer.close()
-                except:
-                    pass
+                except Exception:
+                    logger.warning("Error closing consumer")
             
             if client:
                 try:
                     await client.close()
-                except:
-                    pass
+                except Exception:
+                    logger.warning("Error closing client")
 
     async def _process_message(self, message, consumer, event_mapper):
         """Procesa un mensaje individual con manejo de errores robusto"""
@@ -205,7 +227,7 @@ class EventConsumerService:
             
             # Confirmar procesamiento exitoso
             await consumer.acknowledge(message)
-            logger.debug(f'Event processed successfully')
+            logger.debug('Event processed successfully')
             
         except Exception as e:
             logger.error(f'Error processing message: {e}')
@@ -213,10 +235,8 @@ class EventConsumerService:
             
             # Decidir si rechazar o reintentarh
             if self._is_recoverable_error(e):
-                # Rechazar para reintento
                 await consumer.negative_acknowledge(message)
             else:
-                # Error no recuperable, confirmar para no reintentarlo
                 logger.error(f"Non-recoverable error, acknowledging message: {e}")
                 await consumer.acknowledge(message)
 
@@ -234,15 +254,13 @@ class EventConsumerService:
 
     def _is_recoverable_error(self, error: Exception) -> bool:
         """Determina si un error es recuperable y amerita reintento"""
-        # Errores de conectividad o temporales
         recoverable_errors = (
             ConnectionError,
             TimeoutError,
             pulsar.ConnectError,
-            pulsar.TimeoutError
+            asyncio.TimeoutError
         )
         
-        # Errores de validación o lógica de negocio no son recuperables
         non_recoverable_errors = (
             ValueError,
             KeyError,
@@ -254,7 +272,6 @@ class EventConsumerService:
         elif isinstance(error, non_recoverable_errors):
             return False
         else:
-            # Por defecto, considerar recuperable para evitar pérdida de mensajes
             return True
 
 
@@ -278,7 +295,6 @@ async def suscribirse_a_topico(
             ) as consumidor:
                 while True:
                     mensaje = await consumidor.receive()
-                    print(mensaje)
                     datos = mensaje.value()
                     print(f'Evento recibido: {datos}')
                     await consumidor.acknowledge(mensaje)    

@@ -27,6 +27,11 @@ async def handle_event(event):
     """Handler para procesar eventos desde Pulsar"""
     from ..application.commands import RecordEventCommand
     
+    # Verificar que el handler esté inicializado
+    if event_handler is None:
+        logger.error("Event handler not initialized")
+        return {"error": "Handler not available"}
+    
     # Convertir el evento simple a comando de aplicación
     command = RecordEventCommand(
         event_type=event.event_type,
@@ -77,7 +82,9 @@ async def lifespan(app: FastAPI):
         try:
             await task
         except asyncio.CancelledError:
-            pass
+            # Re-lanzar la excepción después del cleanup
+            logger.info("Task cancelled during shutdown")
+            raise
     logger.info("Application shutdown complete")
 
 app_configs: dict[str, Any] = {

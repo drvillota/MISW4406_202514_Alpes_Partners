@@ -2,7 +2,7 @@ import logging
 import traceback
 import pulsar, _pulsar
 import asyncio
-from typing import Callable, Any
+from typing import Callable, Any, Awaitable, Type
 import aiopulsar
 from pulsar.schema import AvroSchema, Record
 from ..schemas.event_schema import ConversionEventSchema, ClickEventSchema, SaleEventSchema
@@ -15,7 +15,7 @@ settings = get_settings()
 class EventConsumerService:
     """Servicio para consumir eventos de las colas de Pulsar"""
     
-    def __init__(self, event_handler: Callable[[Any], None]):
+    def __init__(self, event_handler: Callable[[Any], Awaitable[Any]]):
         self.event_handler = event_handler
         self.mapper = PulsarEventMapper()
 
@@ -63,7 +63,7 @@ class EventConsumerService:
         self, 
         topic: str, 
         subscription: str, 
-        schema: Record,
+        schema: Type[Record],
         event_mapper: Callable[[Any], Any]
     ):
         """Método genérico para consumir de un tópico específico"""
