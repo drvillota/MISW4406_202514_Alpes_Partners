@@ -61,7 +61,7 @@ async def lifespan(app: FastAPI):
         # Registrar handlers en el message bus
         logger.info(f"🔧 Registrando handler para: {RegistrarConversionCommand}")
         bus.register_command(RegistrarConversionCommand, command_handler.handle_registrar_conversion)
-        logger.info(f"✅ Handler registrado para RegistrarConversionCommand")
+        logger.info(f"Handler registrado para RegistrarConversionCommand")
         
         # Crear un wrapper para las consultas usando la instancia local
         qry_handler = query_handler
@@ -72,15 +72,15 @@ async def lifespan(app: FastAPI):
             else:
                 return qry_handler.handle_list_commissions(query)
         
-        logger.info(f"🔧 Registrando handler para: {ConsultarComisionesPorAfiliadoQuery}")
+        logger.info(f"Registrando handler para: {ConsultarComisionesPorAfiliadoQuery}")
         bus.register_command(ConsultarComisionesPorAfiliadoQuery, query_wrapper)
-        logger.info(f"✅ Handler registrado para ConsultarComisionesPorAfiliadoQuery")
+        logger.info(f"Handler registrado para ConsultarComisionesPorAfiliadoQuery")
         
         # Verificar que se registraron correctamente
         registered_commands = list(bus._command_handlers.keys())
-        logger.info(f"🔍 Comandos registrados en el bus: {registered_commands}")
+        logger.info(f"Comandos registrados en el bus: {registered_commands}")
         
-        logger.info("✅ Handlers inicializados y registrados en message bus")
+        logger.info("Handlers inicializados y registrados en message bus")
         
         # Inicializar consumidores de eventos (simplificado)
         def simple_event_handler(domain_event):

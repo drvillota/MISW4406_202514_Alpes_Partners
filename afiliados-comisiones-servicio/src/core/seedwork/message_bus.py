@@ -11,21 +11,21 @@ class MessageBus:
         self._command_handlers: Dict[Type[Command], Callable[[Command], Any]] = {}
 
     def register_command(self, command_type: Type[Command], handler: Callable[[Command], Any]) -> None:
-        logger.info(f"🚌 MessageBus: Registrando handler para {command_type}")
+        logger.info(f"MessageBus: Registrando handler para {command_type}")
         self._command_handlers[command_type] = handler
-        logger.info(f"🚌 MessageBus: Total handlers: {len(self._command_handlers)}")
+        logger.info(f"MessageBus: Total handlers: {len(self._command_handlers)}")
 
     def handle_command(self, command: Command) -> Any:
         command_type = type(command)
-        logger.info(f"🚌 MessageBus: Buscando handler para {command_type}")
-        logger.info(f"🚌 MessageBus: Handlers disponibles: {list(self._command_handlers.keys())}")
+        logger.info(f"MessageBus: Buscando handler para {command_type}")
+        logger.info(f"MessageBus: Handlers disponibles: {list(self._command_handlers.keys())}")
         
         if command_type not in self._command_handlers:
-            logger.error(f"❌ MessageBus: No handler encontrado para {command_type}")
+            logger.error(f"MessageBus: No handler encontrado para {command_type}")
             raise KeyError(f"No handler registered for {command_type}")
             
         handler = self._command_handlers[command_type]
-        logger.info(f"🚌 MessageBus: Ejecutando handler {handler}")
+        logger.info(f"MessageBus: Ejecutando handler {handler}")
         return handler(command)
 
 bus = MessageBus()
