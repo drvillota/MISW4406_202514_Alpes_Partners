@@ -1,8 +1,8 @@
-# colaboraciones\src\api\v1\router.py
+# colaboraciones/src/api/v1/router.py
 import json
-from typing import Generator, Optional
+from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Body
 from contextvars import ContextVar
 from datetime import datetime
 
@@ -28,16 +28,16 @@ router = APIRouter(prefix="/colaboraciones", tags=["colaboraciones"])
 # ------------------------------------------------------------------
 _uow_metodo: ContextVar[Optional[str]] = ContextVar("_uow_metodo", default=None)
 
-async def set_uow_pulsar() -> Generator[None, None, None]:
+def set_uow_pulsar() -> None:
     """
-    Dependencia que establece temporalmente el método de UoW a "pulsar".
-    Úsala con: Depends(set_uow_pulsar)
+    Dependencia rápida que marca el método de UoW como 'pulsar'.
+    NO usamos un generator (yield) para evitar problemas de ContextVar/token
+    al mezclar ejecución en hilos (tests / starlette).
+    - Úsala con Depends(set_uow_pulsar).
+    Nota: el valor se guarda en el ContextVar para la petición/ contexto actual.
     """
-    token = _uow_metodo.set("pulsar")
-    try:
-        yield
-    finally:
-        _uow_metodo.reset(token)
+    _uow_metodo.set("pulsar")
+    # no hacemos reset() aquí (cada petición tiene su propio contextvar en FastAPI)
 
 def get_current_uow_metodo() -> Optional[str]:
     """Si necesitas leer el valor en otro lugar (ej: UnidadTrabajoPuerto)"""
@@ -46,7 +46,7 @@ def get_current_uow_metodo() -> Optional[str]:
 
 # ---------- POST: Crear colaboración ----------
 @router.post("", status_code=202)
-def crear_colaboracion(body: dict, _uow=Depends(set_uow_pulsar)):
+def crear_colaboracion(body: dict = Body(...), _uow=Depends(set_uow_pulsar)):
     try:
         data = body
         map_colab = MapeadorColaboracionDTOJson()
@@ -79,7 +79,7 @@ def validar_contrato(id: str, _uow=Depends(set_uow_pulsar)):
 
 # ---------- PUT: Rechazar contrato ----------
 @router.put("/{id}/rechazar", status_code=202)
-def rechazar_contrato(id: str, body: Optional[dict] = None, _uow=Depends(set_uow_pulsar)):
+def rechazar_contrato(id: str, body: Optional[dict] = Body(None), _uow=Depends(set_uow_pulsar)):
     try:
         data = body or {}
         motivo = data.get("motivo", "Sin motivo especificado")

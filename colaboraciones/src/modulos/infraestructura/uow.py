@@ -1,8 +1,8 @@
-# src/colaboraciones/modulos/infraestructura/uow.py
+# src/modulos/infraestructura/uow.py
 from abc import ABC, abstractmethod
 from enum import Enum
 from contextvars import ContextVar
-from typing import Optional, List
+from typing import Optional, List, Any
 
 from seedwork.dominio.entidades import AgregacionRaiz
 from pydispatch import dispatcher
@@ -12,7 +12,7 @@ import logging
 import traceback
 
 
-# ContextVar para entornos async/non-flask (FastAPI)
+# ContextVar para entornos async/non-flask (FastAPI). Guarda la instancia de UoW.
 _CTX_UOW: ContextVar[Optional[object]] = ContextVar("_CTX_UOW", default=None)
 
 
@@ -30,6 +30,11 @@ class Batch:
 
 
 class UnidadTrabajo(ABC):
+    """
+    Interfaz / base para Unidades de Trabajo.
+    Implementaciones concretas (p. ej. SQLAlchemy / Pulsar) se encargan de
+    commit/rollback/savepoint y de exponer batches/savepoints.
+    """
 
     def __enter__(self):
         return self
@@ -61,6 +66,7 @@ class UnidadTrabajo(ABC):
     def _limpiar_batches(self):
         raise NotImplementedError
 
+    @property
     @abstractmethod
     def batches(self) -> List[Batch]:
         raise NotImplementedError
@@ -70,12 +76,15 @@ class UnidadTrabajo(ABC):
         raise NotImplementedError
 
     def commit(self):
-        # publicamos eventos post-commit y limpiamos
-        self._publicar_eventos_post_commit()
-        self._limpiar_batches()
+        # publicamos eventos post-commit y limpiamos batches (implementación concreta hará commit DB)
+        try:
+            self._publicar_eventos_post_commit()
+        finally:
+            self._limpiar_batches()
 
     @abstractmethod
     def rollback(self, savepoint=None):
+        # la implementación concreta se encargará de rollback DB o lógica de compensación
         self._limpiar_batches()
 
     @abstractmethod
@@ -100,15 +109,15 @@ class UnidadTrabajo(ABC):
         try:
             for evento in self._obtener_eventos():
                 dispatcher.send(signal=f'{type(evento).__name__}Integracion', evento=evento)
-        except:
+        except Exception:
             logging.error('ERROR: enviando eventos post-commit!')
             traceback.print_exc()
 
 
 # -------------------------
-# Helpers para multi-framework
+# Helpers para multi-framework (Flask / FastAPI / script)
 # -------------------------
-def is_flask():
+def is_flask() -> bool:
     try:
         # detecta flask import disponible en runtime
         from flask import session  # type: ignore
@@ -117,11 +126,24 @@ def is_flask():
         return False
 
 
-def registrar_unidad_de_trabajo(serialized_obj_or_instance):
+def set_current_uow(uow_instance: object) -> None:
+    """
+    Establece la UoW actual en el contexto no-flask (ContextVar).
+    Úsalo desde FastAPI o scripts para inyectar la instancia.
+    """
+    _CTX_UOW.set(uow_instance)
+
+
+def clear_current_uow() -> None:
+    """Limpia la UoW almacenada en ContextVar."""
+    _CTX_UOW.set(None)
+
+
+def registrar_unidad_de_trabajo(serialized_obj_or_instance: Any) -> None:
     """
     Guarda la UoW en el store correspondiente:
      - si estamos en Flask -> guarda el objeto serializado (pickle) en session['uow']
-     - si no -> guarda la instancia en ContextVar
+     - si no -> guarda la instancia en ContextVar (puede aceptar bytes o instancia)
     `serialized_obj_or_instance` puede ser bytes (pickle) o la instancia ya creada.
     """
     if is_flask():
@@ -133,26 +155,27 @@ def registrar_unidad_de_trabajo(serialized_obj_or_instance):
             serialized = serialized_obj_or_instance
         session['uow'] = serialized
     else:
-        # si llega pickled bytes -> deserializar; si es instancia -> set
+        # non-flask: si se pasa bytes -> intentar desempaquetar; si es instancia -> set directo
         if isinstance(serialized_obj_or_instance, (bytes, bytearray)):
             try:
                 inst = pickle.loads(serialized_obj_or_instance)
-                _CTX_UOW.set(inst)
+                set_current_uow(inst)
             except Exception:
-                # si falla deserializar, no hacemos nada
                 logging.exception("No se pudo desempaquetar UoW en registrar_unidad_de_trabajo")
         else:
-            _CTX_UOW.set(serialized_obj_or_instance)
+            set_current_uow(serialized_obj_or_instance)
 
 
 def flask_uow():
-    """Mantener compatibilidad hacia atrás: devuelve pickled uow bytes si se usa Flask session."""
+    """
+    Mantener compatibilidad hacia atrás: devuelve pickled uow bytes si se usa Flask session.
+    Si no existe, se crea una UoW SQLAlchemy por defecto y se serializa.
+    """
     from flask import session  # type: ignore
     if session.get('uow'):
         return session['uow']
 
-    # serializar una UoW por defecto (SQLAlchemy) y guardar en session
-    from config.uow import UnidadTrabajoSQLAlchemy, UnidadTrabajoPulsar  # import local para evitar ciclos
+    from config.uow import UnidadTrabajoSQLAlchemy, UnidadTrabajoPulsar
     uow_inst = UnidadTrabajoSQLAlchemy()
     serialized = pickle.dumps(uow_inst)
     if session.get('uow_metodo') == 'pulsar':
@@ -165,14 +188,12 @@ def unidad_de_trabajo() -> UnidadTrabajo:
     """
     Retorna la UoW activa:
      - si estamos en Flask: deserializa y devuelve la instancia desde session
-     - si no: usa ContextVar y crea la instancia (SQLAlchemy o Pulsar) basada en
-       get_current_uow_metodo() si existe en tu router (opcional)
+     - si no: obtiene la instancia del ContextVar (si no existe la crea por defecto)
     """
     if is_flask():
-        # compatibilidad existing
         return pickle.loads(flask_uow())
 
-    # non-flask / async context: obtener UoW del ContextVar
+    # non-flask: obtener instancia almacenada
     uow = _CTX_UOW.get()
     if uow is None:
         # intentar decidir tipo consultando al router (si existe)
@@ -190,11 +211,11 @@ def unidad_de_trabajo() -> UnidadTrabajo:
         else:
             uow = UnidadTrabajoSQLAlchemy()
 
-        _CTX_UOW.set(uow)
+        set_current_uow(uow)
     return uow
 
 
-def guardar_unidad_trabajo(uow: UnidadTrabajo):
+def guardar_unidad_trabajo(uow: UnidadTrabajo) -> None:
     """
     Guarda la instancia en el lugar adecuado (session o ContextVar).
     Usa esto después de modificar o commitear la UoW para persistir estado.
@@ -202,7 +223,7 @@ def guardar_unidad_trabajo(uow: UnidadTrabajo):
     if is_flask():
         registrar_unidad_de_trabajo(pickle.dumps(uow))
     else:
-        _CTX_UOW.set(uow)
+        set_current_uow(uow)
 
 
 # -------------------------
