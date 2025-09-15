@@ -17,17 +17,38 @@ class Despachador:
     def connect(self):
         """Conectar a Pulsar"""
         try:
-            # En una implementación real, aquí se conectaría a Pulsar:
-            # import pulsar
-            self._client = pulsar.Client(self.broker_url)
-            
-            # Por ahora, simular conexión
-            self._connected = True
-            logger.info("Despachador conectado")
+            if not self._connected:
+                self._client = pulsar.Client(self.broker_url)
+                self._connected = True
+                logger.info(f"Despachador conectado a {self.broker_url}")
+                
+                # Crear topics básicos al conectar
+                self._ensure_topics_exist()
 
         except Exception as e:
             logger.error(f"Error conectando despachador: {e}")
+            self._connected = False
             raise
+    
+    def _ensure_topics_exist(self):
+        """Asegurar que los topics principales existan"""
+        if not self._client:
+            logger.warning("No hay cliente Pulsar disponible para crear topics")
+            return
+            
+        essential_topics = [
+            "persistent://public/default/comisiones.creadas",
+            "persistent://public/default/commission-events"
+        ]
+        
+        for topic in essential_topics:
+            try:
+                # Crear un productor temporal para asegurar que el topic existe
+                producer = self._client.create_producer(topic)
+                producer.close()
+                logger.info(f"Topic verificado: {topic}")
+            except Exception as e:
+                logger.warning(f"No se pudo verificar topic {topic}: {e}")
     
     def is_connected(self) -> bool:
         """Verificar si está conectado"""
@@ -39,11 +60,22 @@ class Despachador:
             if not self._connected:
                 self.connect()
             
-            # En una implementación real, enviar a Pulsar
-            # producer.send(json.dumps(evento))
+            if not self._client:
+                logger.error("Cliente Pulsar no disponible")
+                return False
             
-            # Por ahora, solo logear
-            logger.info(f"Evento enviado a '{topico}': {evento.get('event_type', 'Unknown')}")
+            # Crear el topic completo si no viene con el esquema
+            if not topico.startswith("persistent://"):
+                topico = f"persistent://public/default/{topico}"
+            
+            # Crear productor y enviar mensaje
+            producer = self._client.create_producer(topico)
+            mensaje_json = json.dumps(evento)
+            
+            producer.send(mensaje_json.encode('utf-8'))
+            producer.close()
+            
+            logger.info(f"✅ Evento enviado a '{topico}': {evento.get('event_type', 'Unknown')}")
             logger.debug(f"Datos: {json.dumps(evento, indent=2)}")
             
             return True
@@ -56,9 +88,7 @@ class Despachador:
         """Cerrar conexiones"""
         try:
             if self._client:
-                # En implementación real, cerrar cliente Pulsar:
-                # self._client.close()
-                pass
+                self._client.close()
             
             self._connected = False
             logger.info("Despachador cerrado")
