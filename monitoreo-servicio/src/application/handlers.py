@@ -18,21 +18,26 @@ class EventHandler:
         
     async def handle_record_event(self, command: RecordEventCommand) -> dict:
         """Procesa comando de registro de evento usando PostgreSQL"""
-        # Crear entidad de dominio
-        event = Event(
-            id=uuid4(),
-            event_type=EventType(command.event_type),
-            user_id=UUID(command.user_id),
-            session_id=command.session_id,
-            metadata=command.metadata,
-            occurred_at=command.occurred_at
-        )
-        
-        # Persistir en PostgreSQL
-        self.event_repo.add(event)
-        logger.info(f"Event recorded in DB: {event.id} - {event.event_type.value}")
-        
-        return {"event_id": str(event.id), "status": "recorded"}
+        try:
+            # Crear entidad de dominio con conversiones seguras
+            event = Event(
+                id=uuid4(),
+                event_type=EventType(command.event_type),
+                user_id=UUID(command.user_id) if isinstance(command.user_id, str) else command.user_id,
+                session_id=command.session_id,
+                metadata=command.metadata,
+                occurred_at=command.occurred_at
+            )
+            
+            # Persistir en PostgreSQL
+            self.event_repo.add(event)
+            logger.info(f"Event recorded in DB: {event.id} - {event.event_type.value}")
+            
+            return {"event_id": str(event.id), "status": "recorded"}
+            
+        except Exception as e:
+            logger.error(f"Error recording event: {e}")
+            return {"error": str(e), "status": "failed"}
     
     async def handle_get_metrics(self, query: GetMetricsQuery) -> dict:
         """Procesa query de métricas usando PostgreSQL"""
