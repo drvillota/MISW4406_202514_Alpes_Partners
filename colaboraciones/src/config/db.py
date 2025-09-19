@@ -3,7 +3,7 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-# URL de conexión (usa TESTING env var para tests si quieres)
+# URL de conexión
 TESTING = os.getenv("TESTING", "false").lower() == "true"
 
 if TESTING:
@@ -19,7 +19,7 @@ else:
 
 # Session / Base
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()   # <-- UNA sola Base en todo el proyecto
+Base = declarative_base()
 
 # Dependency para FastAPI
 def get_db():

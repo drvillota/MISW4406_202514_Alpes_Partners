@@ -48,7 +48,7 @@ class MapeadorColaboracionDTOJson(AppMap):
             id_influencer=externo.get("id_influencer", ""),
             contrato_url=externo.get("contrato_url", ""),
             # Normalizamos a minúsculas en la representación externa (tal como usan los tests).
-            estado=externo.get("estado", "pendiente"),
+            estado=externo.get("estado", "PENDIENTE"),
             fecha_creacion=externo.get("fecha_creacion", datetime.utcnow().isoformat()),
         )
 
@@ -61,7 +61,7 @@ class MapeadorColaboracionDTOJson(AppMap):
         try:
             return dto.__dict__
         except Exception:
-            # fallback conservador
+            # fallback
             return dict(dto)
 
 
@@ -75,13 +75,13 @@ class MapeadorColaboracion(RepMap):
         return Colaboracion
 
     def entidad_a_dto(self, entidad: Colaboracion) -> ColaboracionDTO:
-        # soporte id o id_cliente (o id_colaboracion si alguna vez lo tuvieras)
+        # soporte id o id_cliente
         id_val = getattr(entidad, "id", None) or getattr(entidad, "id_cliente", None) or getattr(entidad, "id_colaboracion", None)
         id_str = str(id_val) if id_val is not None else ""
 
         # seguridad sobre campos opcionales
-        id_campania = getattr(entidad.id_campania, "valor", "") if getattr(entidad, "id_campania", None) else ""
-        id_influencer = getattr(entidad.id_influencer, "valor", "") if getattr(entidad, "id_influencer", None) else ""
+        id_campania = getattr(entidad.id_campania, "id", "") if getattr(entidad, "id_campania", None) else ""
+        id_influencer = getattr(entidad.id_influencer, "id", "") if getattr(entidad, "id_influencer", None) else ""
         contrato_url = entidad.contrato.url if getattr(entidad, "contrato", None) else ""
 
         # estado a minúsculas (representación externa)

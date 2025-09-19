@@ -12,7 +12,6 @@ from ..dominio.eventos import (
 )
 from seedwork.aplicacion.comandos import ComandoHandler
 
-# En esta primera versión usaremos un "repositorio en memoria" solo para simular
 _repositorio_colaboraciones = {}
 
 
@@ -34,7 +33,6 @@ class CrearColaboracionHandler(ComandoHandler):
             id_campania=nueva_colaboracion.id_campania,
             id_influencer=nueva_colaboracion.id_influencer
         )
-        # Aquí deberías despachar el evento con Pulsar, por ahora lo simulamos
         print(f"[EVENTO PUBLICADO] {evento}")
 
         return nueva_colaboracion

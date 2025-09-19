@@ -12,13 +12,12 @@ from modulos.dominio.entidades import Colaboracion
 from modulos.dominio.objetos_valor import EstadoColaboracion
 from modulos.aplicacion.mapeadores import MapeadorColaboracion
 
-# Repositorios infra que ahora aceptan opcionalmente una Session en el constructor
 from modulos.infraestructura.repositorios import (
     RepositorioColaboracionesSQLAlchemy,
     RepositorioEventosColaboracionesSQLAlchemy,
 )
 
-# Puerto / helpers de UoW (unidad_de_trabajo() está en el mismo módulo — lo usamos para obtener la instancia)
+# Puerto / helpers de UoW (unidad_de_trabajo() está en el mismo módulo — obtener la instancia)
 from seedwork.infraestructura.uow import UnidadTrabajoPuerto, unidad_de_trabajo
 
 
@@ -44,7 +43,7 @@ class ComandoRechazarContrato(Comando):
 # ---------- Handlers ----------
 class CrearColaboracionHandler(ComandoHandler):
     def handle(self, comando: ComandoCrearColaboracion):
-        # Creamos el DTO tal como antes
+        # Crear DTO
         dto = ColaboracionDTO(
             id=str(uuid.uuid4()),
             id_campania=comando.id_campania,
@@ -57,16 +56,16 @@ class CrearColaboracionHandler(ComandoHandler):
         # Mapear DTO → Entidad de dominio
         colaboracion: Colaboracion = MapeadorColaboracion().dto_a_entidad(dto)
 
-        # Obtener la UoW activa (si existe) para tomar su session
-        uow = unidad_de_trabajo()  # devuelve la instancia actual (FastAPI/ContextVar o Flask)
+        # Obtener la UoW activa para tomar su session
+        uow = unidad_de_trabajo()  # devuelve la instancia actual
         # intentamos extraer session si la UoW la expone (UnidadTrabajoSQLAlchemy debería exponerla)
         session = getattr(uow, "session", None)
 
-        # Construir repositorios pasando la session (si es None, el repo puede usar su fallback)
+        # Construir repositorios pasando la session
         repositorio = RepositorioColaboracionesSQLAlchemy(session=session)
         repositorio_eventos = RepositorioEventosColaboracionesSQLAlchemy(session=session)
 
-        # Registrar operación en la UoW (la UoW real se encargará de ejecutar el batch en commit)
+        # Registrar operación en la UoW
         UnidadTrabajoPuerto.registrar_batch(
             repositorio.agregar,
             colaboracion,

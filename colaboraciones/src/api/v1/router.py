@@ -37,7 +37,6 @@ def set_uow_pulsar() -> None:
     Nota: el valor se guarda en el ContextVar para la petición/ contexto actual.
     """
     _uow_metodo.set("pulsar")
-    # no hacemos reset() aquí (cada petición tiene su propio contextvar en FastAPI)
 
 def get_current_uow_metodo() -> Optional[str]:
     """Si necesitas leer el valor en otro lugar (ej: UnidadTrabajoPuerto)"""
@@ -59,10 +58,10 @@ def crear_colaboracion(body: dict = Body(...), _uow=Depends(set_uow_pulsar)):
         )
         ejecutar_commando(comando)
 
-        return {}  # mismo comportamiento: body vacío con 202
+        return {} 
 
     except ExcepcionDominio as e:
-        # devolver 400 con mensaje de error (similar a Flask Response(json.dumps(...), 400))
+        # devolver 400 con mensaje de error
         raise HTTPException(status_code=400, detail=str(e))
 
 
@@ -97,7 +96,7 @@ def rechazar_contrato(id: str, body: Optional[dict] = Body(None), _uow=Depends(s
 def obtener_colaboracion(id: str):
     query_resultado = ejecutar_query(ObtenerColaboracion(id=id))
     map_colab = MapeadorColaboracionDTOJson()
-    # dto_a_externo devuelve dict (igual que en tu versión Flask)
+    # dto_a_externo devuelve dict
     return map_colab.dto_a_externo(query_resultado.resultado)
 
 
