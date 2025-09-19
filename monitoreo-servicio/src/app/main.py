@@ -34,8 +34,8 @@ async def handle_event(event):
     
     # Convertir el evento simple a comando de aplicación
     command = RecordEventCommand(
-        event_type=event.event_type,
-        user_id=event.user_id,
+        event_type=event.event_type.value,  # Convertir enum a string
+        user_id=str(event.user_id),  # Convertir UUID a string
         session_id=event.session_id,
         metadata=event.metadata,
         occurred_at=event.occurred_at

@@ -7,7 +7,7 @@ import logging
 from fastapi import FastAPI
 from ..infrastructure.config import UVICORN_PORT
 from ..infrastructure.db.sqlalchemy import Base, engine, SessionLocal
-from ..infrastructure.db.repositories import AffiliateRepository, CommissionRepository, ConversionEventRepository
+from ..infrastructure.db.repositories import AffiliateRepository, ContentRepository
 from ..infrastructure.messaging.despachadores import IntegracionPublisher
 from ..infrastructure.messaging.consumidores import EventConsumerService
 from ..application.handlers import create_handlers
@@ -24,14 +24,12 @@ logging.getLogger("sqlalchemy").setLevel(logging.WARNING)
 logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 logging.getLogger("asyncio").setLevel(logging.WARNING)
 
-
-
-app_configs: dict[str, Any] = {"title": "Afiliados — Comisiones (Pulsar)"}
+app_configs: dict[str, Any] = {"title": "Lealtad — Contenido (Pulsar)"}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Gestión del ciclo de vida de la aplicación"""
-    logger.info("Iniciando servicio de afiliados y comisiones...")
+    logger.info("Iniciando servicio de afiliados y contenidos...")
     
     try:
         # Crear tablas de base de datos
@@ -48,7 +46,7 @@ async def lifespan(app: FastAPI):
         
         # Crear handlers simplificados
         from ..application.handlers import create_handlers
-        from ..application.commands import RegistrarConversionCommand, ConsultarComisionesPorAfiliadoQuery
+        from ..application.commands import RegistrarContentCommand, ConsultarContenidosPorAfiliadoQuery
         from ..core.seedwork.message_bus import bus
         
         handlers = create_handlers(session)
@@ -59,28 +57,28 @@ async def lifespan(app: FastAPI):
         query_handler = handlers['query_handler']
         
         # Registrar handlers en el message bus
-        logger.info(f"🔧 Registrando handler para: {RegistrarConversionCommand}")
-        bus.register_command(RegistrarConversionCommand, command_handler.handle_registrar_conversion)
-        logger.info(f"Handler registrado para RegistrarConversionCommand")
-        
+        logger.info(f"🔧 Registrando handler para: {RegistrarContentCommand}")
+        bus.register_command(RegistrarContentCommand, command_handler.handle_registrar_content)
+        logger.info(f"✅ Handler registrado para RegistrarContentCommand")
+
         # Crear un wrapper para las consultas usando la instancia local
         qry_handler = query_handler
         
         def query_wrapper(query):
-            if isinstance(query, ConsultarComisionesPorAfiliadoQuery):
-                return qry_handler.handle_consultar_comisiones_por_afiliado(query)
+            if isinstance(query, ConsultarContenidosPorAfiliadoQuery):
+                return qry_handler.handle_consultar_contenidos_por_afiliado(query)
             else:
-                return qry_handler.handle_list_commissions(query)
-        
-        logger.info(f"Registrando handler para: {ConsultarComisionesPorAfiliadoQuery}")
-        bus.register_command(ConsultarComisionesPorAfiliadoQuery, query_wrapper)
-        logger.info(f"Handler registrado para ConsultarComisionesPorAfiliadoQuery")
-        
+                return qry_handler.handle_list_contents(query)
+
+        logger.info(f"🔧 Registrando handler para: {ConsultarContenidosPorAfiliadoQuery}")
+        bus.register_command(ConsultarContenidosPorAfiliadoQuery, query_wrapper)
+        logger.info(f"✅ Handler registrado para ConsultarContenidosPorAfiliadoQuery")
+
         # Verificar que se registraron correctamente
         registered_commands = list(bus._command_handlers.keys())
-        logger.info(f"Comandos registrados en el bus: {registered_commands}")
+        logger.info(f"🔍 Comandos registrados en el bus: {registered_commands}")
         
-        logger.info("Handlers inicializados y registrados en message bus")
+        logger.info("✅ Handlers inicializados y registrados en message bus")
         
         # Inicializar consumidores de eventos (simplificado)
         def simple_event_handler(domain_event):
