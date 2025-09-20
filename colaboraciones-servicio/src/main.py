@@ -21,6 +21,9 @@ from modulos.infraestructura.v1.comandos import (
 )
 from modulos.infraestructura.despachadores import Despachador
 from seedwork.infraestructura import utils
+from fastapi import Request
+from config.uow import UnidadTrabajoSQLAlchemy
+from modulos.infraestructura.uow import set_current_uow, clear_current_uow
 
 import asyncio
 
@@ -69,6 +72,25 @@ async def lifespan(app: FastAPI):
 # -------------------------------------------------------
 app = FastAPI(lifespan=lifespan, **app_configs)
 
+@app.middleware("http")
+async def uow_middleware(request: Request, call_next):
+    # crear UoW nueva por request
+    uow = UnidadTrabajoSQLAlchemy()
+    set_current_uow(uow)
+
+    try:
+        response = await call_next(request)
+        # commit si todo salió bien
+        uow.commit()
+        return response
+    except Exception:
+        # rollback si hubo error
+        uow.rollback()
+        raise
+    finally:
+        # limpiar ContextVar para no “ensuciar” requests posteriores
+        clear_current_uow()
+        
 # Health simple
 @app.get("/health", include_in_schema=False)
 async def health() -> dict:

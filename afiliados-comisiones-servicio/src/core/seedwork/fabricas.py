@@ -6,7 +6,7 @@ En este archivo se definen las fábricas base reutilizables
 
 from abc import ABC, abstractmethod
 from typing import Any, Dict
-
+ 
 class Fabrica(ABC):
     """Clase base para todas las fábricas"""
     

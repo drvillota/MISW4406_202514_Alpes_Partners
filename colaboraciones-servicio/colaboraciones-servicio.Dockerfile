@@ -9,7 +9,7 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app/src
 
 # Instala dependencias
-COPY colaboraciones-requirements.txt /app/requirements.txt
+COPY colaboraciones-servicio-requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
 # Copia sólo el código fuente (ya con imports relativos)

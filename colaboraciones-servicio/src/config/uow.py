@@ -1,5 +1,5 @@
 # colaboraciones/src/config/uow.py
-from colaboraciones.src.modulos.infraestructura.uow import UnidadTrabajo, Batch
+from  modulos.infraestructura.uow import UnidadTrabajo, Batch
 from sqlalchemy.orm import Session
 
 class UnidadTrabajoSQLAlchemy(UnidadTrabajo):

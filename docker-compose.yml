@@ -186,12 +186,12 @@ services:
     restart: unless-stopped
 
   colaboraciones:
-    container_name: colaboraciones
+    container_name: colaboraciones-servicio
     hostname: colaboraciones
     build:
-      context: ./colaboraciones
-      dockerfile: colaboraciones.Dockerfile
-    profiles: ["colaboraciones", "pulsar"]
+      context: ./colaboraciones-servicio
+      dockerfile: colaboraciones-servicio.Dockerfile
+    profiles: ["colaboraciones-servicio", "pulsar"]
     networks:
       - pulsar
     depends_on:
