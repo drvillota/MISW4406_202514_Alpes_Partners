@@ -1,100 +1,106 @@
-# src/colaboraciones/modulos/infraestructura/mapeadores.py
-from modulos.dominio.entidades import Colaboracion
-from modulos.dominio.objetos_valor import (
-    CampaniaId, InfluencerId, Contrato, EstadoColaboracion, Fecha
-)
-from .dto import Colaboracion as ColaboracionDTO
+"""Event Mapper para convertir eventos externos a eventos de dominio de Colaboraciones"""
+
+import logging
 from datetime import datetime
-from dataclasses import is_dataclass
+from typing import Any, Dict, Optional
+from ...domain.eventos import (
+    ColaboracionIniciada,
+    ContratoFirmado,
+    ContratoCancelado,
+    ColaboracionFinalizada,
+    PublicacionRegistrada,
+)
+
+logger = logging.getLogger(__name__)
 
 
-class MapeadorColaboracionInfra:
-    """Convierte entre DTO de infraestructura (SQLAlchemy) y entidad de dominio"""
+class EventMapper:
+    """Mapper que convierte eventos de Pulsar a eventos de dominio"""
 
-    def obtener_tipo(self) -> type:
-        # La fábrica usa esto para decidir qué fábrica usar
-        return Colaboracion
+    def map_colaboracion_event(self, pulsar_data: Dict[str, Any]) -> Optional[Any]:
+        """Mapea eventos relacionados con colaboraciones"""
+        try:
+            event_type = pulsar_data.get("event_type", pulsar_data.get("type", ""))
 
-    def entidad_a_dto(self, entidad: Colaboracion) -> ColaboracionDTO:
-        dto = ColaboracionDTO()
+            if event_type == "ColaboracionIniciada":
+                return ColaboracionIniciada(
+                    colaboracion_id=str(pulsar_data["colaboracion_id"]),
+                    campania_id=str(pulsar_data.get("campania_id", "")),
+                    influencer_id=str(pulsar_data.get("influencer_id", "")),
+                    contrato_id=str(pulsar_data.get("contrato_id", "")),
+                    fecha_inicio=pulsar_data.get("fecha_inicio"),
+                    fecha_fin=pulsar_data.get("fecha_fin"),
+                    timestamp=self._convert_to_unix_timestamp(
+                        pulsar_data.get("timestamp")
+                    ),
+                )
 
-        # id: soporte para entidad.id o entidad.id_cliente (historic)
-        entidad_id = getattr(entidad, "id", None) or getattr(entidad, "id_cliente", None)
-        dto.id = str(entidad_id) if entidad_id is not None else ""
+            elif event_type == "ContratoFirmado":
+                return ContratoFirmado(
+                    contrato_id=str(pulsar_data["contrato_id"]),
+                    colaboracion_id=str(pulsar_data.get("colaboracion_id", "")),
+                    timestamp=self._convert_to_unix_timestamp(
+                        pulsar_data.get("timestamp")
+                    ),
+                )
 
-        # ids internos: soporte .id (nuevo) o .valor (antiguo)
-        id_camp = getattr(entidad, "id_campania", None)
-        dto.id_campania = getattr(id_camp, "id", None) or getattr(id_camp, "valor", "") if id_camp else ""
+            elif event_type == "ContratoCancelado":
+                return ContratoCancelado(
+                    contrato_id=str(pulsar_data["contrato_id"]),
+                    colaboracion_id=str(pulsar_data.get("colaboracion_id", "")),
+                    motivo=pulsar_data.get("motivo", "No especificado"),
+                    timestamp=self._convert_to_unix_timestamp(
+                        pulsar_data.get("timestamp")
+                    ),
+                )
 
-        id_inf = getattr(entidad, "id_influencer", None)
-        dto.id_influencer = getattr(id_inf, "id", None) or getattr(id_inf, "valor", "") if id_inf else ""
+            elif event_type == "ColaboracionFinalizada":
+                return ColaboracionFinalizada(
+                    colaboracion_id=str(pulsar_data["colaboracion_id"]),
+                    timestamp=self._convert_to_unix_timestamp(
+                        pulsar_data.get("timestamp")
+                    ),
+                )
 
-        dto.contrato_url = entidad.contrato.url if getattr(entidad, "contrato", None) else ""
-        # estado: si es Enum (tiene .value) usamos eso, si no str()
-        estado = getattr(entidad, "estado", None)
-        dto.estado = estado.value if hasattr(estado, "value") else (str(estado) if estado is not None else "")
+            elif event_type == "PublicacionRegistrada":
+                return PublicacionRegistrada(
+                    colaboracion_id=str(pulsar_data["colaboracion_id"]),
+                    url=pulsar_data.get("url", ""),
+                    red=pulsar_data.get("red", ""),
+                    fecha=pulsar_data.get("fecha"),
+                    timestamp=self._convert_to_unix_timestamp(
+                        pulsar_data.get("timestamp")
+                    ),
+                )
 
-        # fecha_creacion: normalmente Fecha.valor (datetime) o directamente datetime
-        fecha_obj = getattr(entidad, "fecha_creacion", None)
-        if fecha_obj is None:
-            dto.fecha_creacion = datetime.utcnow()
-        else:
-            # si es objeto Fecha con atributo 'valor'
-            dto.fecha_creacion = getattr(fecha_obj, "valor", fecha_obj)
+            else:
+                logger.warning(f"Unknown colaboracion event type: {event_type}")
+                return None
 
-        return dto
+        except Exception as e:
+            logger.error(f"Error mapping colaboracion event: {e}, data: {pulsar_data}")
+            return None
 
-    def dto_a_entidad(self, dto: ColaboracionDTO) -> Colaboracion:
-        # dto.fecha_creacion puede ser datetime o string iso; normalizamos a datetime
-        fcre = getattr(dto, "fecha_creacion", None)
-        if isinstance(fcre, str):
-            try:
-                fcre_dt = datetime.fromisoformat(fcre)
-            except Exception:
-                # fallback
-                fcre_dt = datetime.utcnow()
-        elif isinstance(fcre, datetime):
-            fcre_dt = fcre
-        else:
-            fcre_dt = datetime.utcnow()
+    def _convert_to_unix_timestamp(self, timestamp: Any) -> int:
+        """Convierte timestamp a Unix timestamp (segundos)"""
+        if timestamp is None:
+            return int(datetime.now().timestamp())
 
-        return Colaboracion(
-            id=getattr(dto, "id", None) or None,
-            id_campania=CampaniaId(getattr(dto, "id_campania", "")) if getattr(dto, "id_campania", "") else None,
-            id_influencer=InfluencerId(getattr(dto, "id_influencer", "")) if getattr(dto, "id_influencer", "") else None,
-            contrato=Contrato(
-                url=getattr(dto, "contrato_url", ""),
-                fecha_creacion=fcre_dt,
-                fecha_validacion=None,
-                fecha_finalizacion=None,
-                fecha_rechazo=None
-            ) if getattr(dto, "contrato_url", "") else None,
-            estado=EstadoColaboracion(getattr(dto, "estado", "PENDIENTE").upper()),
-            fecha_creacion=Fecha(fcre_dt)
-        )
+        try:
+            if isinstance(timestamp, int):
+                return timestamp if timestamp < 10**10 else timestamp // 1000
+            if isinstance(timestamp, float):
+                return int(timestamp)
+            if isinstance(timestamp, datetime):
+                return int(timestamp.timestamp())
+            if isinstance(timestamp, str):
+                try:
+                    dt = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+                    return int(dt.timestamp())
+                except ValueError:
+                    dt = datetime.strptime(timestamp, "%Y-%m-%d %H:%M:%S")
+                    return int(dt.timestamp())
+        except Exception as e:
+            logger.warning(f"Could not parse timestamp {timestamp}: {e}")
 
-
-class MapeadorEventoColaboracionInfra:
-    """Convierte eventos de dominio a DTOs persistentes"""
-
-    def obtener_tipo(self) -> type:
-        # si tu fábrica necesita distinguir eventos, aquí puedes devolver el tipo de evento;
-        # como simplificación devolvemos dict (no usado por fábrica principal)
-        return dict
-
-    def entidad_a_dto(self, evento) -> dict:
-        # Devuelve un dict con los campos que tu DTO ORM espera.
-        return {
-            "id": str(getattr(evento, "id", "")),
-            "id_entidad": str(getattr(evento, "id_colaboracion", "")),
-            "fecha_evento": getattr(evento, "fecha_creacion", datetime.utcnow()),
-            "version": getattr(evento, "version", "1.0"),
-            "tipo_evento": evento.__class__.__name__,
-            "formato_contenido": "JSON",
-            "nombre_servicio": getattr(evento, "service_name", "colaboraciones"),
-            # Si el evento tiene payload como dataclass o dict, normalizamos
-            "contenido": (evento.__dict__ if hasattr(evento, "__dict__") else dict(evento))
-        }
-
-    def dto_a_entidad(self, dto):
-        raise NotImplementedError
+        return int(datetime.now().timestamp())

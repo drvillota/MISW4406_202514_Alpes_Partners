@@ -1,99 +1,102 @@
-# colaboraciones\src\main.py
-from fastapi import FastAPI
-from contextlib import asynccontextmanager
-from typing import List
-
-from config.api import app_configs
-from api.v1.router import router as v1
-
-# consumidores / eventos / comandos / despachador según tu estructura
-from modulos.infraestructura.consumidores import suscribirse_a_topico
-from modulos.infraestructura.v1.eventos import (
-    ColaboracionCreadaPayload,
-    ContratoValidadoPayload,
-    ContratoRechazadoPayload,
-    EventoColaboracion,
-)
-from modulos.infraestructura.v1.comandos import (
-    ComandoCrearColaboracion,
-    ComandoValidarContrato,
-    ComandoRechazarContrato,
-)
-from modulos.infraestructura.despachadores import Despachador
-from seedwork.infraestructura import utils
-
+from __future__ import annotations
 import asyncio
+from contextlib import asynccontextmanager
+from typing import Any
+import logging
 
-# -------------------------------------------------------
-# Lifespan: arrancar consumidores en background (startup)
-# y cancelarlos en shutdown
-# -------------------------------------------------------
+from fastapi import FastAPI
+from ..infrastructure.database.connection import Base, engine
+from ..infrastructure.messaging.despachadores import ColaboracionPublisher
+from ..infrastructure.messaging.consumidores import EventConsumerService
+from ..entrypoints.router import router
+from ..infrastructure.config.settings import get_settings
+import uvicorn
+
+# Configuración central
+settings = get_settings()
+
+# Configurar logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+logging.getLogger("pulsar").setLevel(logging.WARNING)
+logging.getLogger("sqlalchemy").setLevel(logging.WARNING)
+logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+logging.getLogger("asyncio").setLevel(logging.WARNING)
+
+app_configs: dict[str, Any] = {"title": "Colaboraciones (Pulsar)"}
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    tasks: List[asyncio.Task] = []
+    """Gestión del ciclo de vida de la aplicación"""
+    logger.info("Iniciando servicio de Colaboraciones...")
 
-    # Evitar arrancar consumidores durante tests: usa app_configs.env == "test"
-    if getattr(app_configs, "env", "").lower() != "test":
+    try:
+        # Crear tablas en la DB
+        Base.metadata.create_all(bind=engine)
+        logger.info("Tablas de base de datos creadas")
+
+        # Publisher usando la URL de settings
+        app.state.publisher = ColaboracionPublisher()
+        logger.info(f"Publisher conectado a {settings.pulsar_url}")
+
+        # Consumidores de eventos externos
+        def simple_event_handler(domain_event):
+            try:
+                event_type = type(domain_event).__name__
+                logger.info(f"Procesando evento externo: {event_type}")
+            except Exception as e:
+                logger.error(f"Error procesando evento: {e}")
+
         try:
-            # Suscribirse a tópicos relevantes para colaboraciones
-            # Ajusta los nombres de tópico/subscriber si usas otros
-            tasks.append(asyncio.create_task(
-                suscribirse_a_topico("evento-colaboraciones", "sub-colaboraciones-eventos", EventoColaboracion)
-            ))
-            tasks.append(asyncio.create_task(
-                suscribirse_a_topico("comando-crear-colaboracion", "sub-com-crear-colab", ComandoCrearColaboracion)
-            ))
-            tasks.append(asyncio.create_task(
-                suscribirse_a_topico("comando-validar-contrato", "sub-com-validar-contrato", ComandoValidarContrato)
-            ))
-            tasks.append(asyncio.create_task(
-                suscribirse_a_topico("comando-rechazar-contrato", "sub-com-rechazar-contrato", ComandoRechazarContrato)
-            ))
-        except Exception as exc:
-            # opcional: loggear aquí, no interrumpir startup por fallo en una suscripción
-            # import logging; logging.exception("Error arrancando consumidores: %s", exc)
-            pass
+            app.state.consumer_service = EventConsumerService(simple_event_handler)
+            app.state.consumer_task = asyncio.create_task(
+                app.state.consumer_service.start_all_consumers()
+            )
+            logger.info("Consumidores de eventos iniciados")
+        except Exception as e:
+            logger.warning(f"Consumidores no disponibles (Pulsar offline?): {e}")
+            app.state.consumer_service = None
+            app.state.consumer_task = None
 
-    # startup completed
+        logger.info("Servicio Colaboraciones iniciado correctamente")
+
+    except Exception as e:
+        logger.error(f"Error iniciando servicio: {e}")
+        raise
+
     yield
 
-    # shutdown: cancelar y esperar tareas (evita warnings y fugas)
-    if tasks:
-        for t in tasks:
-            t.cancel()
-        await asyncio.gather(*tasks, return_exceptions=True)
+    # Cleanup
+    logger.info("Cerrando servicio Colaboraciones...")
+    try:
+        if hasattr(app.state, "consumer_service") and app.state.consumer_service:
+            await app.state.consumer_service.stop_all_consumers()
+            logger.info("Consumidores detenidos")
+
+        if hasattr(app.state, "consumer_task") and app.state.consumer_task and not app.state.consumer_task.done():
+            app.state.consumer_task.cancel()
+            try:
+                await app.state.consumer_task
+            except asyncio.CancelledError:
+                logger.info("Tarea de consumidores cancelada")
+
+        if hasattr(app.state, "publisher"):
+            app.state.publisher.close()
+            logger.info("Publisher cerrado")
+
+    except Exception as e:
+        logger.error(f"Error cerrando servicio: {e}")
 
 
-# -------------------------------------------------------
-# App FastAPI (una sola vez, con lifespan)
-# -------------------------------------------------------
 app = FastAPI(lifespan=lifespan, **app_configs)
+app.include_router(router)
 
-# Health simple
-@app.get("/health", include_in_schema=False)
-async def health() -> dict:
-    return {"status": "ok"}
-
-# Opcional: endpoints de prueba para publicar eventos/comandos (útiles en desarrollo)
-@app.get("/prueba-colaboracion-creada", include_in_schema=False)
-async def prueba_colaboracion_creada() -> dict:
-    # Construye un payload mínimo; adapta los atributos a los dataclasses que uses.
-    payload = ColaboracionCreadaPayload(
-        id="camp-xxx-inf-yyy",  # ajusta campos reales
-        id_campania="camp-001",
-        id_influencer="inf-001",
-        contrato_url="http://contratos/doc.pdf",
-        fecha_creacion=utils.time_millis(),
+if __name__ == "__main__":
+    uvicorn.run(
+        "src.app.main:app",
+        host=settings.UVICORN_HOST,
+        port=settings.UVICORN_PORT,
+        reload=settings.DEBUG,
     )
-    evento = EventoColaboracion(
-        time=utils.time_millis(),
-        ingestion=utils.time_millis(),
-        datacontenttype=ColaboracionCreadaPayload.__name__,
-        data=payload
-    )
-    desp = Despachador()
-    desp.publicar_mensaje(evento, "evento-colaboraciones")
-    return {"status": "ok"}
-
-# incluir tu router (APIRouter) con las rutas ya convertidas a FastAPI
-app.include_router(v1, prefix="/v1", tags=["Version 1"])

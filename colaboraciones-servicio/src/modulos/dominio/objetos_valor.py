@@ -49,9 +49,8 @@ class Nicho(ObjetoValor):
 
 class EstadoColaboracion(Enum):
     # Mantengo valores en MAYÚSCULAS (coherente con tu Enum actual).
-    PENDIENTE = "PENDIENTE"
-    VALIDADO = "VALIDADO"
-    RECHAZADO = "RECHAZADO"
+    INICIADO = "INICIADO"
+    CANCELADO = "CANCELADO"
     FINALIZADO = "FINALIZADO"
 
     def __str__(self):

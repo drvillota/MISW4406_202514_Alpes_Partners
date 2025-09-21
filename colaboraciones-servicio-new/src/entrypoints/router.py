@@ -1,110 +1,101 @@
-# colaboraciones/src/api/v1/router.py
-import json
-from typing import Optional
+import logging
+from fastapi import APIRouter, Depends, HTTPException
+from uuid import UUID, uuid4
+from datetime import date, datetime, timezone
+from sqlalchemy.orm import Session
+from pydantic import BaseModel
 
-from fastapi import APIRouter, Depends, HTTPException, Body
-from contextvars import ContextVar
-from datetime import datetime
-
-from modulos.aplicacion.dto import ColaboracionDTO
-from modulos.aplicacion.mapeadores import MapeadorColaboracionDTOJson
-from modulos.aplicacion.comandos.comandos import (
-    ComandoCrearColaboracion,
-    ComandoValidarContrato,
-    ComandoRechazarContrato,
+from infrastructure.database.connection import SessionLocal
+from core.seedworks.message_bus import bus
+from application.comandos import (
+    IniciarColaboracionComando,
+    FirmarContratoComando,
+    CancelarContratoComando,
+    FinalizarColaboracionComando,
+    RegistrarPublicacionComando,
 )
-from modulos.aplicacion.queries.queries import (
-    ObtenerColaboracion,
-    ListarColaboracionesPorCampania,
+from application.queries import (
+    ConsultarColaboracionQuery,
+    ListarColaboracionesQuery,
 )
-from seedwork.aplicacion.comandos import ejecutar_commando
-from seedwork.aplicacion.queries import ejecutar_query
-from seedwork.dominio.excepciones import ExcepcionDominio
+from infrastructure.config.settings import get_settings
 
-router = APIRouter(prefix="/colaboraciones", tags=["colaboraciones"])
+logger = logging.getLogger(__name__)
+router = APIRouter()
+settings = get_settings()
 
-# ------------------------------------------------------------------
-# ContextVar para seleccionar método de Unidad de Trabajo (reemplaza flask.session['uow_metodo'])
-# ------------------------------------------------------------------
-_uow_metodo: ContextVar[Optional[str]] = ContextVar("_uow_metodo", default=None)
-
-def set_uow_pulsar() -> None:
-    """
-    Dependencia rápida que marca el método de UoW como 'pulsar'.
-    NO usamos un generator (yield) para evitar problemas de ContextVar/token
-    al mezclar ejecución en hilos (tests / starlette).
-    - Úsala con Depends(set_uow_pulsar).
-    Nota: el valor se guarda en el ContextVar para la petición/ contexto actual.
-    """
-    _uow_metodo.set("pulsar")
-
-def get_current_uow_metodo() -> Optional[str]:
-    """Si necesitas leer el valor en otro lugar (ej: UnidadTrabajoPuerto)"""
-    return _uow_metodo.get()
-
-
-# ---------- POST: Crear colaboración ----------
-@router.post("", status_code=202)
-def crear_colaboracion(body: dict = Body(...), _uow=Depends(set_uow_pulsar)):
+def get_session():
+    db = SessionLocal()
     try:
-        data = body
-        map_colab = MapeadorColaboracionDTOJson()
-        dto: ColaboracionDTO = map_colab.externo_a_dto(data)
+        yield db
+    finally:
+        db.close()
 
-        comando = ComandoCrearColaboracion(
-            id_campania=dto.id_campania,
-            id_influencer=dto.id_influencer,
-            contrato_url=dto.contrato_url,
-        )
-        ejecutar_commando(comando)
+# --- Requests DTOs ---
+class IniciarColaboracionIn(BaseModel):
+    campania_id: UUID
+    influencer_id: UUID
+    fecha_inicio: date
+    fecha_fin: date
 
-        return {} 
+class PublicacionIn(BaseModel):
+    url: str
+    red: str
+    fecha: date
 
-    except ExcepcionDominio as e:
-        # devolver 400 con mensaje de error
-        raise HTTPException(status_code=400, detail=str(e))
-
-
-# ---------- PUT: Validar contrato ----------
-@router.put("/{id}/validar", status_code=202)
-def validar_contrato(id: str, _uow=Depends(set_uow_pulsar)):
+# --- Endpoints principales ---
+@router.post("/colaboraciones")
+def iniciar_colaboracion(payload: IniciarColaboracionIn):
+    cmd = IniciarColaboracionComando(
+        campania_id=payload.campania_id,
+        influencer_id=payload.influencer_id,
+        fecha_inicio=payload.fecha_inicio,
+        fecha_fin=payload.fecha_fin,
+    )
     try:
-        comando = ComandoValidarContrato(id_colaboracion=id)
-        ejecutar_commando(comando)
-        return {}
-    except ExcepcionDominio as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        return bus.handle_command(cmd)
+    except Exception as e:
+        logger.error(f"Error iniciando colaboración: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
-
-# ---------- PUT: Rechazar contrato ----------
-@router.put("/{id}/rechazar", status_code=202)
-def rechazar_contrato(id: str, body: Optional[dict] = Body(None), _uow=Depends(set_uow_pulsar)):
+@router.post("/colaboraciones/{colaboracion_id}/publicaciones")
+def registrar_publicacion(colaboracion_id: UUID, payload: PublicacionIn):
+    cmd = RegistrarPublicacionComando(
+        colaboracion_id=colaboracion_id,
+        url=payload.url,
+        red=payload.red,
+        fecha=payload.fecha,
+    )
     try:
-        data = body or {}
-        motivo = data.get("motivo", "Sin motivo especificado")
+        return bus.handle_command(cmd)
+    except Exception as e:
+        logger.error(f"Error registrando publicación: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
-        comando = ComandoRechazarContrato(id_colaboracion=id, motivo=motivo)
-        ejecutar_commando(comando)
+@router.get("/colaboraciones/{colaboracion_id}")
+def consultar_colaboracion(colaboracion_id: UUID):
+    q = ConsultarColaboracionQuery(colaboracion_id=colaboracion_id)
+    try:
+        return bus.handle_command(q)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-        return {}
-    except ExcepcionDominio as e:
-        raise HTTPException(status_code=400, detail=str(e))
+@router.get("/colaboraciones")
+def listar_colaboraciones():
+    q = ListarColaboracionesQuery()
+    try:
+        return bus.handle_command(q)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-
-# ---------- GET: Obtener colaboración ----------
-@router.get("/{id}")
-def obtener_colaboracion(id: str):
-    query_resultado = ejecutar_query(ObtenerColaboracion(id=id))
-    map_colab = MapeadorColaboracionDTOJson()
-    # dto_a_externo devuelve dict
-    return map_colab.dto_a_externo(query_resultado.resultado)
-
-
-# ---------- GET: Listar colaboraciones por campaña ----------
-@router.get("")
-def listar_colaboraciones(id_campania: Optional[str] = None):
-    if not id_campania:
-        raise HTTPException(status_code=400, detail="Debe especificar un id_campania")
-
-    query_resultado = ejecutar_query(ListarColaboracionesPorCampania(id_campania=id_campania))
-    return [dto.__dict__ for dto in query_resultado.resultado]
+# --- Diagnóstico ---
+@router.get("/dev/settings")
+def show_settings():
+    return {
+        "database_url": settings.DATABASE_URL,
+        "pulsar_url": settings.pulsar_url,
+        "uvicorn_host": settings.UVICORN_HOST,
+        "uvicorn_port": settings.UVICORN_PORT,
+        "debug": settings.DEBUG,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }

@@ -1,50 +1,87 @@
+"""Entidades y agregación del dominio de colaboraciones
+
+Este archivo define las entidades principales y la raíz de agregación
+para contratos y colaboraciones con influencers en el dominio de marketing.
+"""
+
 from dataclasses import dataclass, field
-from .eventos import EventoDominio
-from .mixins import ValidarReglasMixin
-from .reglas import IdEntidadEsInmutable
-from .excepciones import IdDebeSerInmutableExcepcion
-from datetime import datetime
-import uuid
+from typing import List
+
+from core.seedworks.objetos_valor import (
+    Identificador,
+    Email,
+    EstadoColaboracion,
+    EstadoCampania,
+    EstadoContrato,
+    Periodo,
+    RedSocial,
+    IdentidadEnRed,
+    NombreCampania,
+    Publicacion,
+)
+
+
+# -------------------------------
+# ENTIDADES
+# -------------------------------
 
 @dataclass
-class Entidad:
-    id: uuid.UUID = field(hash=True)
-    _id: uuid.UUID = field(init=False, repr=False, hash=True)
-    fecha_creacion: datetime =  field(default=datetime.now())
-    fecha_actualizacion: datetime = field(default=datetime.now())
+class Influencer:
+    nombre: str
+    email: Email
+    identidades: List[IdentidadEnRed] = field(default_factory=list)
 
-    @classmethod
-    def siguiente_id(self) -> uuid.UUID:
-        return uuid.uuid4()
-
-    @property
-    def id(self):
-        return self._id
-
-    @id.setter
-    def id(self, id: uuid.UUID) -> None:
-        if not IdEntidadEsInmutable(self).es_valido():
-            raise IdDebeSerInmutableExcepcion()
-        self._id = self.siguiente_id()
-        
+    def agregar_identidad(self, identidad: IdentidadEnRed):
+        if identidad in self.identidades:
+            raise ValueError("El influencer ya tiene esta identidad en la red")
+        self.identidades.append(identidad)
 
 @dataclass
-class AgregacionRaiz(Entidad, ValidarReglasMixin):
-    eventos: list[EventoDominio] = field(default_factory=list)
-    eventos_compensacion: list[EventoDominio] = field(default_factory=list)
+class Campania:
+    nombre: NombreCampania
+    marca: str
+    periodo: Periodo
+    estado: EstadoCampania
 
-    def agregar_evento(self, evento: EventoDominio, evento_compensacion: EventoDominio = None):
-        self.eventos.append(evento)
+@dataclass
+class Contrato:
+    periodo: Periodo
+    estado: EstadoContrato
 
-        if evento_compensacion:
-            self.eventos_compensacion.append(evento_compensacion)
+# -------------------------------
+# AGREGACIÓN RAÍZ
+# -------------------------------
+
+@dataclass
+class Colaboracion:
+    id: Identificador
+    campania: Campania
+    influencer: Influencer
+    contrato: Contrato
+    estado: EstadoColaboracion
+    publicaciones: List[Identificador] = field(default_factory=list)
     
-    def limpiar_eventos(self):
-        self.eventos = list()
-        self.eventos_compensacion = list()
+    def firmar_contrato(self):
+        if self.contrato.estado.valor != "PENDIENTE":
+            raise ValueError("Solo se pueden firmar contratos en estado PENDIENTE")
+        self.contrato = Contrato(
+            id=self.contrato.id,
+            periodo=self.contrato.periodo,
+            estado=EstadoContrato("FIRMADO"),
+        )
+        self.estado = EstadoColaboracion("VIGENTE")
 
+    def cancelar(self):
+        self.contrato = Contrato(
+            id=self.contrato.id,
+            periodo=self.contrato.periodo,
+            estado=EstadoContrato("CANCELADO"),
+        )
+        self.estado = EstadoColaboracion("CANCELADA")
 
-@dataclass
-class Locacion(Entidad):
-    def __str__(self) -> str:
-        ...
+    def finalizar(self):
+        self.estado = EstadoColaboracion("FINALIZADA")
+    
+    def registrar_publicacion(self, publicacion: Publicacion):
+        """Agrega una publicación asociada a esta colaboración"""
+        self.publicaciones.append(publicacion)
