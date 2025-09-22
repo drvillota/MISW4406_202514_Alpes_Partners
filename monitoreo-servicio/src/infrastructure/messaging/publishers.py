@@ -113,7 +113,7 @@ class EventPublisher:
             
             result = {
                 "status": "published",
-                "topic": "conversions", 
+                "topic": "conversion-events", 
                 "message_id": str(message_id),
                 "data": conversion_data
             }
