@@ -17,24 +17,40 @@ class PulsarEventMapper:
             # Extraer datos dependiendo del tipo de objeto
             if hasattr(pulsar_data, '__dict__'):
                 # Es un objeto schema de Pulsar
-                user_id = getattr(pulsar_data, 'user_id', str(uuid4()))
-                session_id = getattr(pulsar_data, 'session_id', '')
+                affiliate_id = getattr(pulsar_data, 'affiliate_id', str(uuid4()))
+                conversion_type = getattr(pulsar_data, 'conversion_type', 'unknown')
                 amount = getattr(pulsar_data, 'amount', 0)
+                currency = getattr(pulsar_data, 'currency', 'USD')
+                occurred_at = getattr(pulsar_data, 'occurred_at', None)
                 timestamp = getattr(pulsar_data, 'timestamp', None)
+                event_type = getattr(pulsar_data, 'event_type', 'ConversionRequested')
+                source_service = getattr(pulsar_data, 'source_service', 'affiliates-commissions')
             else:
                 # Es un diccionario
-                user_id = pulsar_data.get('user_id', str(uuid4()))
-                session_id = pulsar_data.get('session_id', '')
+                affiliate_id = pulsar_data.get('affiliate_id', str(uuid4()))
+                conversion_type = pulsar_data.get('conversion_type', 'unknown')
                 amount = pulsar_data.get('amount', 0)
+                currency = pulsar_data.get('currency', 'USD')
+                occurred_at = pulsar_data.get('occurred_at', None)
                 timestamp = pulsar_data.get('timestamp', None)
+                event_type = pulsar_data.get('event_type', 'ConversionRequested')
+                source_service = pulsar_data.get('source_service', 'affiliates-commissions')
                 
             return Event(
                 id=uuid4(),
                 event_type=EventType.CONVERSION,
-                user_id=self._parse_uuid(user_id),
-                session_id=str(session_id),
-                metadata={'amount': float(amount) if amount else 0.0},
-                occurred_at=self._parse_timestamp(timestamp)
+                user_id=self._parse_uuid(affiliate_id),  # Usar affiliate_id como user_id
+                session_id=f"conversion_{affiliate_id}_{int(datetime.now().timestamp())}",
+                metadata={
+                    'affiliate_id': str(affiliate_id),
+                    'conversion_type': str(conversion_type),
+                    'amount': float(amount) if amount else 0.0,
+                    'currency': str(currency),
+                    'event_type': str(event_type),
+                    'source_service': str(source_service),
+                    'occurred_at': str(occurred_at) if occurred_at else None
+                },
+                occurred_at=self._parse_timestamp(occurred_at or timestamp)
             )
         except Exception as e:
             logger.error(f"Error mapping conversion event: {e}")
@@ -107,6 +123,52 @@ class PulsarEventMapper:
         except Exception as e:
             logger.error(f"Error mapping sale event: {e}")
             return self._create_default_event(EventType.SALE, pulsar_data)
+
+    def map_publicacion_event(self, pulsar_data: Union[Dict[str, Any], Any]) -> Event:
+        """Mapear evento de publicación registrada desde Pulsar"""
+        try:
+            logger.debug(f"Mapping publicacion event: {type(pulsar_data)} - {pulsar_data}")
+            
+            # Extraer datos dependiendo del tipo de objeto
+            if hasattr(pulsar_data, '__dict__'):
+                # Es un objeto schema de Pulsar
+                colaboracion_id = getattr(pulsar_data, 'colaboracion_id', str(uuid4()))
+                campania_id = getattr(pulsar_data, 'campania_id', str(uuid4()))
+                influencer_id = getattr(pulsar_data, 'influencer_id', str(uuid4()))
+                url = getattr(pulsar_data, 'url', '')
+                red = getattr(pulsar_data, 'red', '')
+                fecha = getattr(pulsar_data, 'fecha', None)
+                timestamp = getattr(pulsar_data, 'timestamp', None)
+            else:
+                # Es un diccionario
+                colaboracion_id = pulsar_data.get('colaboracion_id', str(uuid4()))
+                campania_id = pulsar_data.get('campania_id', str(uuid4()))
+                influencer_id = pulsar_data.get('influencer_id', str(uuid4()))
+                url = pulsar_data.get('url', '')
+                red = pulsar_data.get('red', '')
+                fecha = pulsar_data.get('fecha', None)
+                timestamp = pulsar_data.get('timestamp', None)
+                
+            return Event(
+                id=uuid4(),
+                event_type=EventType.PUBLICACION,  # Usar PUBLICACION específico para publicaciones
+                user_id=self._parse_uuid(influencer_id),  # Usar influencer_id como user_id
+                session_id=str(colaboracion_id),  # Usar colaboracion_id como session_id
+                metadata={
+                    'colaboracion_id': str(colaboracion_id),
+                    'campania_id': str(campania_id),
+                    'influencer_id': str(influencer_id),
+                    'url': str(url),
+                    'red': str(red),
+                    'fecha': str(fecha) if fecha else None,
+                    'event_type': 'PublicacionRegistrada',
+                    'source_service': 'colaboraciones'
+                },
+                occurred_at=self._parse_timestamp(timestamp)
+            )
+        except Exception as e:
+            logger.error(f"Error mapping publicacion event: {e}")
+            return self._create_default_event(EventType.PUBLICACION, pulsar_data)
 
     def _parse_uuid(self, user_id: Any) -> UUID:
         """Parse UUID de manera segura"""

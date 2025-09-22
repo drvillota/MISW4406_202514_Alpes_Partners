@@ -19,3 +19,12 @@ class SaleEventSchema(BaseEventSchema):
     """Schema simple para ventas"""
     order_id = String()
     amount = Float()
+
+class PublicacionRegistradaSchema(BaseEventSchema):
+    """Schema para eventos de publicaciones registradas"""
+    colaboracion_id = String()
+    campania_id = String()
+    influencer_id = String()
+    url = String()
+    red = String()
+    fecha = String()  # ISO format date

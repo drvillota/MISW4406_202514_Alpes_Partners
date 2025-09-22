@@ -172,7 +172,7 @@ async def pulsar_status():
         return {
             "status": "connected",
             "pulsar_url": settings.pulsar_url,
-            "topics": ["clicks", "conversions", "sales"],
+            "topics": ["clicks", "conversion-events", "sales"],
             "timestamp": datetime.now().isoformat()
         }
         

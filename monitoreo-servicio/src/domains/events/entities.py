@@ -8,6 +8,7 @@ class EventType(Enum):
     CONVERSION = "conversion"
     CLICK = "click"
     SALE = "sale"
+    PUBLICACION = "publicacion"
 
 @dataclass
 class Event:
@@ -26,6 +27,9 @@ class Event:
         
     def is_sale(self) -> bool:
         return self.event_type == EventType.SALE
+    
+    def is_publicacion(self) -> bool:
+        return self.event_type == EventType.PUBLICACION
 
 # Factory functions siguiendo
 def nuevo_evento_conversion(user_id: UUID, session_id: str, metadata: dict, occurred_at: datetime) -> Event:
@@ -52,6 +56,16 @@ def nuevo_evento_venta(user_id: UUID, session_id: str, metadata: dict, occurred_
     return Event(
         id=uuid4(),
         event_type=EventType.SALE,
+        user_id=user_id,
+        session_id=session_id,
+        metadata=metadata,
+        occurred_at=occurred_at
+    )
+
+def nuevo_evento_publicacion(user_id: UUID, session_id: str, metadata: dict, occurred_at: datetime) -> Event:
+    return Event(
+        id=uuid4(),
+        event_type=EventType.PUBLICACION,
         user_id=user_id,
         session_id=session_id,
         metadata=metadata,
