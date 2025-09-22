@@ -1,0 +1,40 @@
+from dataclasses import dataclass, field
+from .eventos import EventoDominio
+from .mixins import ValidarReglasMixin
+from .reglas import IdEntidadEsInmutable
+from .excepciones import IdDebeSerInmutableExcepcion
+from datetime import datetime
+import uuid
+@dataclass(kw_only=True)
+class Entidad:
+    id: uuid.UUID = field(default_factory=uuid.uuid4, init=True)
+    fecha_creacion: datetime = field(default_factory=datetime.now)
+
+    @classmethod
+    def siguiente_id(self) -> uuid.UUID:
+        return uuid.uuid4()
+
+    @property
+    def id(self):
+        return self._id
+
+    @id.setter
+    def id(self, id: uuid.UUID) -> None:
+        if not IdEntidadEsInmutable(self).es_valido():
+            raise IdDebeSerInmutableExcepcion()
+        self._id = self.siguiente_id()
+
+@dataclass
+class AgregacionRaiz(Entidad, ValidarReglasMixin):
+    eventos: list[EventoDominio] = field(default_factory=list)
+    eventos_compensacion: list[EventoDominio] = field(default_factory=list)
+
+    def agregar_evento(self, evento: EventoDominio, evento_compensacion: EventoDominio = None):
+        self.eventos.append(evento)
+
+        if evento_compensacion:
+            self.eventos_compensacion.append(evento_compensacion)
+    
+    def limpiar_eventos(self):
+        self.eventos = list()
+        self.eventos_compensacion = list()

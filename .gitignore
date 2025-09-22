@@ -8,3 +8,5 @@ __pycache__/
 # Data Volume for Zookeeper
 /data
 /bin
+
+*.egg-info
