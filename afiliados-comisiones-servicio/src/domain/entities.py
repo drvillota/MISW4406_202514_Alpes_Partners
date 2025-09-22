@@ -20,9 +20,6 @@ class Affiliate:
     active: bool = True
     
     def calculate_commission(self, conversion_amount: Decimal) -> Decimal:
-        """Calcula comisión basada en el monto de conversión"""
-        if not self.active:
-            return Decimal('0')
         return (conversion_amount * self.commission_rate) / Decimal('100')
 
 @dataclass  

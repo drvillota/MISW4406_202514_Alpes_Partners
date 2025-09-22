@@ -38,7 +38,6 @@ class EventConsumerService:
             self.consumer_tasks = [
                 asyncio.create_task(self.consume_affiliate_events()),
                 asyncio.create_task(self.consume_conversion_events()),
-                asyncio.create_task(self.consume_commission_events())
             ]
             
             logger.info("Starting all event consumers...")
@@ -53,8 +52,7 @@ class EventConsumerService:
         """Crear tópicos si no existen"""
         topics_to_create = [
             "persistent://public/default/affiliate-events",
-            "persistent://public/default/conversion-events", 
-            "persistent://public/default/commission-events"
+            "persistent://public/default/conversion-events"
         ]
         
         try:
@@ -106,15 +104,6 @@ class EventConsumerService:
             topic="conversion-events", 
             subscription="afiliados-comisiones-conversions",
             event_mapper=self.event_mapper.map_conversion_event,
-            consumer_type=_pulsar.ConsumerType.Shared
-        )
-
-    async def consume_commission_events(self):
-        """Consume eventos de comisiones (para otros servicios)"""
-        await self._consume_topic_with_retry(
-            topic="commission-events",
-            subscription="afiliados-comisiones-commissions",
-            event_mapper=self.event_mapper.map_commission_event,
             consumer_type=_pulsar.ConsumerType.Shared
         )
 

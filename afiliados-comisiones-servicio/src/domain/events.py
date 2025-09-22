@@ -19,18 +19,6 @@ class AffiliateRegistered:
     commission_rate: float
     timestamp: int  # Unix timestamp
 
-@dataclass
-class AffiliateActivated:
-    """Evento: Se activó un afiliado"""
-    affiliate_id: str
-    timestamp: int
-
-@dataclass
-class AffiliateDeactivated:
-    """Evento: Se desactivó un afiliado"""
-    affiliate_id: str
-    reason: str
-    timestamp: int
 
 @dataclass
 class CommissionCalculated:

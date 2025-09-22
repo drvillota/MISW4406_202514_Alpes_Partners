@@ -37,8 +37,7 @@ class Despachador:
             return
             
         essential_topics = [
-            "persistent://public/default/comisiones.creadas",
-            "persistent://public/default/commission-events"
+            "persistent://public/default/commission"
         ]
         
         for topic in essential_topics:
@@ -75,13 +74,13 @@ class Despachador:
             producer.send(mensaje_json.encode('utf-8'))
             producer.close()
             
-            logger.info(f"✅ Evento enviado a '{topico}': {evento.get('event_type', 'Unknown')}")
+            logger.info(f"Evento enviado a '{topico}': {evento.get('event_type', 'Unknown')}")
             logger.debug(f"Datos: {json.dumps(evento, indent=2)}")
             
             return True
             
         except Exception as e:
-            logger.error(f"❌ Error publicando evento: {e}")
+            logger.error(f"Error publicando evento: {e}")
             return False
     
     def close(self):
@@ -120,7 +119,7 @@ class IntegracionPublisher:
                 'source_service': 'affiliates-commissions'
             }
             
-            return self.despachador.publicar_evento('commission-events', evento)
+            return self.despachador.publicar_evento('commission', evento)
             
         except Exception as e:
             logger.error(f"Error publicando comisión: {e}")
@@ -129,6 +128,45 @@ class IntegracionPublisher:
     def _publish(self, evento):
         """Método síncrono para compatibilidad"""
         return self.publicar_comision_creada(evento)
+    
+    def publicar_afiliado_registrado(self, affiliate_data):
+        """Publicar evento de afiliado registrado"""
+        try:
+            evento = {
+                'event_type': 'AffiliateRegistered',
+                'affiliate_id': str(affiliate_data.get('id')),
+                'name': affiliate_data.get('name'),
+                'email': affiliate_data.get('email'),
+                'commission_rate': float(affiliate_data.get('commission_rate', 0)),
+                'timestamp': datetime.now(timezone.utc).isoformat(),
+                'source_service': 'affiliates-commissions'
+            }
+            
+            return self.despachador.publicar_evento('affiliate-events', evento)
+            
+        except Exception as e:
+            logger.error(f"Error publicando registro de afiliado: {e}")
+            return False
+    
+    def publicar_conversion_solicitada(self, conversion_data):
+        """Publicar evento de conversión solicitada"""
+        try:
+            evento = {
+                'event_type': 'ConversionRequested',
+                'affiliate_id': str(conversion_data.get('affiliate_id')),
+                'conversion_type': conversion_data.get('event_type'),
+                'amount': float(conversion_data.get('monto', 0)),
+                'currency': conversion_data.get('moneda', 'USD'),
+                'occurred_at': conversion_data.get('occurred_at'),
+                'timestamp': datetime.now(timezone.utc).isoformat(),
+                'source_service': 'affiliates-commissions'
+            }
+            
+            return self.despachador.publicar_evento('conversion-events', evento)
+            
+        except Exception as e:
+            logger.error(f"Error publicando solicitud de conversión: {e}")
+            return False
     
     def close(self):
         """Cerrar despachador"""
