@@ -17,17 +17,6 @@ class RegisterAffiliateCommand(Command):
     commission_rate: Decimal
 
 @dataclass
-class ActivateAffiliateCommand(Command):
-    """Comando: Activar afiliado"""
-    affiliate_id: UUID
-
-@dataclass
-class DeactivateAffiliateCommand(Command):
-    """Comando: Desactivar afiliado"""
-    affiliate_id: UUID
-    reason: str = "Manual deactivation"
-
-@dataclass
 class ProcessConversionCommand(Command):
     """Comando: Procesar conversión y calcular comisión"""
     affiliate_id: UUID
@@ -57,15 +46,3 @@ class ListCommissionsQuery(Command):
     affiliate_id: UUID
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
-
-@dataclass
-class ListAffiliatesQuery(Command):
-    """Consulta: Listar todos los afiliados"""
-    active_only: bool = True
-
-@dataclass  
-class ConsultarComisionesPorAfiliadoQuery(Command):
-    """Consulta: Consultar comisiones por afiliado (compatibilidad)"""
-    affiliate_id: UUID
-    desde: Optional[datetime] = None
-    hasta: Optional[datetime] = None

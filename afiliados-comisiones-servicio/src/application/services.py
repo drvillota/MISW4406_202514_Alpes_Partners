@@ -25,11 +25,6 @@ class AffiliateService:
     ) -> Affiliate:
         """Registrar nuevo afiliado"""
         
-        # Verificar que no existe el email
-        existing = self.affiliate_repo.get_by_email(email)
-        if existing:
-            raise ValueError(f"Ya existe un afiliado con email {email}")
-        
         # Crear nuevo afiliado
         affiliate = Affiliate(
             id=uuid4(),
@@ -47,21 +42,6 @@ class AffiliateService:
         
         return affiliate
     
-    def activate_affiliate(self, affiliate_id: UUID) -> None:
-        """Activar afiliado"""
-        affiliate = self.affiliate_repo.get_by_id(affiliate_id)
-        if not affiliate:
-            raise ValueError(f"Afiliado {affiliate_id} no encontrado")
-        
-        self.affiliate_repo.update_status(affiliate_id, True)
-    
-    def deactivate_affiliate(self, affiliate_id: UUID) -> None:
-        """Desactivar afiliado"""
-        affiliate = self.affiliate_repo.get_by_id(affiliate_id)
-        if not affiliate:
-            raise ValueError(f"Afiliado {affiliate_id} no encontrado")
-        
-        self.affiliate_repo.update_status(affiliate_id, False)
     
     def get_affiliate(self, affiliate_id: UUID) -> Optional[Affiliate]:
         """Obtener afiliado por ID"""
@@ -146,14 +126,6 @@ class ConversionService:
             start_date, 
             end_date
         )
-    
-    def mark_commission_as_paid(self, commission_id: UUID) -> None:
-        """Marcar comisión como pagada"""
-        commission = self.commission_repo.get_by_id(commission_id)
-        if not commission:
-            raise ValueError(f"Comisión {commission_id} no encontrada")
-        
-        self.commission_repo.update_status(commission_id, "paid")
 
 # Factory para crear servicios
 def create_services(session: Session):

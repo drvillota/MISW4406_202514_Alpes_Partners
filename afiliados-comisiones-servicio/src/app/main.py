@@ -48,7 +48,7 @@ async def lifespan(app: FastAPI):
         
         # Crear handlers simplificados
         from ..application.handlers import create_handlers
-        from ..application.commands import RegistrarConversionCommand, ConsultarComisionesPorAfiliadoQuery
+        from ..application.commands import RegistrarConversionCommand
         from ..core.seedwork.message_bus import bus
         
         handlers = create_handlers(session)
@@ -58,23 +58,10 @@ async def lifespan(app: FastAPI):
         command_handler = handlers['command_handler'] 
         query_handler = handlers['query_handler']
         
-        # Registrar handlers en el message bus
-        logger.info(f"🔧 Registrando handler para: {RegistrarConversionCommand}")
+        # Registrar handlers en el message bus (solo comandos para el POC)
+        logger.info(f"Registrando handler para: {RegistrarConversionCommand}")
         bus.register_command(RegistrarConversionCommand, command_handler.handle_registrar_conversion)
-        logger.info(f"Handler registrado para RegistrarConversionCommand")
-        
-        # Crear un wrapper para las consultas usando la instancia local
-        qry_handler = query_handler
-        
-        def query_wrapper(query):
-            if isinstance(query, ConsultarComisionesPorAfiliadoQuery):
-                return qry_handler.handle_consultar_comisiones_por_afiliado(query)
-            else:
-                return qry_handler.handle_list_commissions(query)
-        
-        logger.info(f"Registrando handler para: {ConsultarComisionesPorAfiliadoQuery}")
-        bus.register_command(ConsultarComisionesPorAfiliadoQuery, query_wrapper)
-        logger.info(f"Handler registrado para ConsultarComisionesPorAfiliadoQuery")
+        logger.info("Handler registrado para RegistrarConversionCommand")
         
         # Verificar que se registraron correctamente
         registered_commands = list(bus._command_handlers.keys())
@@ -82,19 +69,102 @@ async def lifespan(app: FastAPI):
         
         logger.info("Handlers inicializados y registrados en message bus")
         
-        # Inicializar consumidores de eventos (simplificado)
-        def simple_event_handler(domain_event):
-            """Handler simplificado para procesar eventos de dominio"""
+        # Inicializar consumidores de eventos con handler que ejecuta comandos
+        def comprehensive_event_handler(domain_event):
+            """Handler que procesa eventos de dominio ejecutando comandos apropiados"""
             try:
+                from ..domain.events import AffiliateRegistered, ConversionRegistered
+                from ..application.commands import RegisterAffiliateCommand, RegistrarConversionCommand
+                from decimal import Decimal
+                import uuid
+                from datetime import datetime, timezone
+                
+                # Asegurar que el command_handler esté disponible
+                if command_handler is None:
+                    logger.error("Command handler no está inicializado")
+                    return
+                
                 event_type = type(domain_event).__name__
-                logger.info(f"Procesando evento: {event_type}")
-                # Solo logear los eventos por ahora para reducir complejidad
+                logger.info(f"Procesando evento de dominio: {event_type}")
+                
+                if isinstance(domain_event, AffiliateRegistered):
+                    # Ejecutar comando para registrar afiliado
+                    try:
+                        cmd = RegisterAffiliateCommand(
+                            name=domain_event.name,
+                            email=domain_event.email,
+                            commission_rate=Decimal(str(domain_event.commission_rate))
+                        )
+                        
+                        result = command_handler.handle_register_affiliate(cmd)
+                        logger.info(f"Afiliado registrado desde evento: {result}")
+                        
+                    except Exception as e:
+                        logger.error(f"Error registrando afiliado desde evento: {e}")
+                
+                elif isinstance(domain_event, ConversionRegistered):
+                    # Ejecutar comando para procesar conversión
+                    try:
+                        cmd = RegistrarConversionCommand(
+                            affiliate_id=uuid.UUID(domain_event.affiliate_id),
+                            event_type='COMPRA',  # Mapear según el contexto
+                            monto=domain_event.amount,
+                            moneda=domain_event.currency,
+                            occurred_at=datetime.fromtimestamp(domain_event.timestamp, tz=timezone.utc)
+                        )
+                        
+                        result = command_handler.handle_registrar_conversion(cmd)
+                        logger.info(f"Conversión procesada desde evento: {result}")
+                        
+                    except Exception as e:
+                        logger.error(f"Error procesando conversión desde evento: {e}")
+                
+                # Para eventos personalizados que publicamos
+                elif hasattr(domain_event, '__dict__'):
+                    # Manejar eventos que no son del dominio estándar (eventos custom de Pulsar)
+                    event_type_field = getattr(domain_event, 'event_type', None)
+                    
+                    if event_type_field == 'AffiliateRegistered':
+                        try:
+                            cmd = RegisterAffiliateCommand(
+                                name=getattr(domain_event, 'name', ''),
+                                email=getattr(domain_event, 'email', ''),
+                                commission_rate=Decimal(str(getattr(domain_event, 'commission_rate', 0)))
+                            )
+                            
+                            result = command_handler.handle_register_affiliate(cmd)
+                            logger.info(f"Afiliado registrado desde evento custom: {result}")
+                            
+                        except Exception as e:
+                            logger.error(f"Error registrando afiliado desde evento custom: {e}")
+                    
+                    elif event_type_field == 'ConversionRequested':
+                        try:
+                            cmd = RegistrarConversionCommand(
+                                affiliate_id=uuid.UUID(getattr(domain_event, 'affiliate_id', '')),
+                                event_type=getattr(domain_event, 'conversion_type', 'COMPRA'),
+                                monto=getattr(domain_event, 'amount', 0),
+                                moneda=getattr(domain_event, 'currency', 'USD'),
+                                occurred_at=datetime.fromisoformat(getattr(domain_event, 'occurred_at', '').replace('Z', '+00:00'))
+                            )
+                            
+                            result = command_handler.handle_registrar_conversion(cmd)
+                            logger.info(f"Conversión procesada desde evento custom: {result}")
+                            
+                        except Exception as e:
+                            logger.error(f"Error procesando conversión desde evento custom: {e}")
+                
+                else:
+                    logger.info(f"Evento no procesable: {event_type}")
+                    
             except Exception as e:
-                logger.error(f"Error procesando evento: {e}")
+                logger.error(f"Error general procesando evento: {e}")
+                import traceback
+                traceback.print_exc()
         
         # Crear consumidores pero solo si Pulsar está disponible
         try:
-            app.state.consumer_service = EventConsumerService(simple_event_handler)
+            app.state.consumer_service = EventConsumerService(comprehensive_event_handler)
             # Iniciar en background (no bloquear si Pulsar no está disponible)
             app.state.consumer_task = asyncio.create_task(
                 app.state.consumer_service.start_all_consumers()

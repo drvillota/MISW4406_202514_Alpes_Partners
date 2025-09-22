@@ -9,8 +9,6 @@ from datetime import datetime
 from typing import Any, Dict, Optional
 from ...domain.events import (
     AffiliateRegistered, 
-    AffiliateActivated, 
-    AffiliateDeactivated, 
     CommissionCalculated,
     ConversionRegistered
 )
@@ -26,26 +24,17 @@ class EventMapper:
             event_type = pulsar_data.get('event_type', pulsar_data.get('type', ''))
             
             if event_type == 'AffiliateRegistered' or event_type == 'affiliate_registered':
-                return AffiliateRegistered(
-                    affiliate_id=str(pulsar_data['affiliate_id']),
-                    name=pulsar_data.get('name', ''),
-                    email=pulsar_data.get('email', ''),
-                    commission_rate=float(pulsar_data.get('commission_rate', 0.0)),
-                    timestamp=self._convert_to_unix_timestamp(pulsar_data.get('timestamp'))
-                )
-            
-            elif event_type == 'AffiliateActivated' or event_type == 'affiliate_activated':
-                return AffiliateActivated(
-                    affiliate_id=str(pulsar_data['affiliate_id']),
-                    timestamp=self._convert_to_unix_timestamp(pulsar_data.get('timestamp'))
-                )
-            
-            elif event_type == 'AffiliateDeactivated' or event_type == 'affiliate_deactivated':
-                return AffiliateDeactivated(
-                    affiliate_id=str(pulsar_data['affiliate_id']),
-                    reason=pulsar_data.get('reason', 'No especificado'),
-                    timestamp=self._convert_to_unix_timestamp(pulsar_data.get('timestamp'))
-                )
+                # Crear un objeto simple para pasar al handler
+                class AffiliateEvent:
+                    def __init__(self, data):
+                        self.event_type = 'AffiliateRegistered'
+                        self.affiliate_id = data['affiliate_id']
+                        self.name = data['name']
+                        self.email = data['email']
+                        self.commission_rate = data['commission_rate']
+                        self.timestamp = data.get('timestamp', '')
+                
+                return AffiliateEvent(pulsar_data)
             
             else:
                 logger.warning(f"Unknown affiliate event type: {event_type}")
@@ -55,17 +44,35 @@ class EventMapper:
             logger.error(f"Error mapping affiliate event: {e}, data: {pulsar_data}")
             return None
 
-    def map_conversion_event(self, pulsar_data: Dict[str, Any]) -> Optional[ConversionRegistered]:
+    def map_conversion_event(self, pulsar_data: Dict[str, Any]) -> Optional[Any]:
         """Mapea eventos de conversiones desde Pulsar"""
         try:
-            return ConversionRegistered(
-                conversion_id=str(pulsar_data.get('conversion_id', '')),
-                affiliate_id=str(pulsar_data['affiliate_id']),
-                user_id=str(pulsar_data.get('user_id', '')),
-                amount=float(pulsar_data.get('amount', 0.0)),
-                currency=pulsar_data.get('currency', 'USD'),
-                timestamp=self._convert_to_unix_timestamp(pulsar_data.get('timestamp'))
-            )
+            event_type = pulsar_data.get('event_type', pulsar_data.get('type', ''))
+            
+            if event_type == 'ConversionRequested' or event_type == 'conversion_requested':
+                # Crear un objeto simple para pasar al handler
+                class ConversionEvent:
+                    def __init__(self, data):
+                        self.event_type = 'ConversionRequested'
+                        self.affiliate_id = data['affiliate_id']
+                        self.conversion_type = data.get('conversion_type', 'COMPRA')
+                        self.amount = data.get('amount', 0)
+                        self.currency = data.get('currency', 'USD')
+                        self.occurred_at = data.get('occurred_at', '')
+                        self.timestamp = data.get('timestamp', '')
+                
+                return ConversionEvent(pulsar_data)
+            
+            else:
+                # Para eventos de conversiones normales, usar el mapeo original
+                return ConversionRegistered(
+                    conversion_id=str(pulsar_data.get('conversion_id', '')),
+                    affiliate_id=str(pulsar_data['affiliate_id']),
+                    user_id=str(pulsar_data.get('user_id', '')),
+                    amount=float(pulsar_data.get('amount', 0.0)),
+                    currency=pulsar_data.get('currency', 'USD'),
+                    timestamp=self._convert_to_unix_timestamp(pulsar_data.get('timestamp'))
+                )
             
         except Exception as e:
             logger.error(f"Error mapping conversion event: {e}, data: {pulsar_data}")
