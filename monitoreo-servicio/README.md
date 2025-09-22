@@ -47,7 +47,7 @@ con persistencia en **PostgreSQL** y consumo de eventos desde **Apache Pulsar**.
 
 ---
 
-## 🔄 Flujo de Datos
+## Flujo de Datos
 
 ```
 [Pulsar Topics]
@@ -80,7 +80,7 @@ con persistencia en **PostgreSQL** y consumo de eventos desde **Apache Pulsar**.
 
 ---
 
-## 🚀 Quick Start con Docker
+## Quick Start con Docker
 
 ### **Levantar todo el stack:**
 ```bash
@@ -106,7 +106,7 @@ docker compose logs -f monitoreo
 
 ---
 
-## 📊 API Endpoints
+## API Endpoints
 
 ### **Health Check**
 ```bash
@@ -152,7 +152,7 @@ curl "http://localhost:8082/events?event_type=conversion&limit=5"
 
 ---
 
-## 🧪 Testing Manual con Pulsar
+## Testing Manual con Pulsar
 
 ### **Simular eventos** (necesitarás cliente Pulsar):
 
@@ -299,7 +299,7 @@ python -m src.app.main
 
 ---
 
-## 🚀 Roadmap / TODOs
+## Roadmap / TODOs
 
 ### **Para Producción:**
 - [ ] Implementar persistencia real (DB) en lugar de memoria

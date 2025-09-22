@@ -1,0 +1,306 @@
+{
+  "info": {
+    "name": "BFF CSaaS - Saga Pattern Demo",
+    "description": "Backend for Frontend - Content as a Service Platform\nDemostración del patrón Saga para transacciones distribuidas",
+    "version": "1.0.0",
+    "contact": {
+      "name": "CSaaS Team",
+      "email": "admin@csaas.com"
+    }
+  },
+  "variable": [
+    {
+      "key": "bff_base_url",
+      "value": "http://localhost:8000",
+      "description": "URL base del BFF Service"
+    },
+    {
+      "key": "saga_id",
+      "value": "",
+      "description": "ID de saga para seguimiento (se actualiza automáticamente)"
+    }
+  ],
+  "item": [
+    {
+      "name": "🎯 SAGA PRINCIPAL",
+      "description": "Endpoints principales para ejecutar y monitorear sagas",
+      "item": [
+        {
+          "name": "Iniciar Saga - Registro Completo de Afiliado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"affiliate_name\": \"Juan Pérez\",\n  \"affiliate_email\": \"juan.perez@example.com\",\n  \"commission_rate\": 0.15,\n  \"content_type\": \"BLOG\",\n  \"content_title\": \"Guía Completa de Marketing Digital\",\n  \"content_description\": \"Una guía completa sobre estrategias de marketing digital para empresas modernas\",\n  \"collaboration_type\": \"CONTENT_CREATION\"\n}"
+            },
+            "url": {
+              "raw": "{{bff_base_url}}/api/v1/sagas/complete-affiliate-registration",
+              "host": ["{{bff_base_url}}"],
+              "path": ["api", "v1", "sagas", "complete-affiliate-registration"]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Extraer saga_id para usar en otros requests",
+                  "if (pm.response.code === 200) {",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.collectionVariables.set('saga_id', responseJson.saga_id);",
+                  "    console.log('Saga ID guardado:', responseJson.saga_id);",
+                  "}",
+                  "",
+                  "pm.test('Saga iniciada correctamente', () => {",
+                  "    pm.expect(pm.response.code).to.eq(200);",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson.saga_type).to.eq('CompleteAffiliateRegistration');",
+                  "    pm.expect(responseJson.status).to.eq('STARTED');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar Estado de Saga",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{bff_base_url}}/api/v1/sagas/{{saga_id}}/status",
+              "host": ["{{bff_base_url}}"],
+              "path": ["api", "v1", "sagas", "{{saga_id}}", "status"]
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado de saga obtenido', () => {",
+                  "    pm.expect(pm.response.code).to.eq(200);",
+                  "    const responseJson = pm.response.json();",
+                  "    pm.expect(responseJson.saga_id).to.exist;",
+                  "    pm.expect(responseJson.status).to.exist;",
+                  "    pm.expect(responseJson.steps).to.be.an('array');",
+                  "});",
+                  "",
+                  "// Mostrar información de pasos",
+                  "if (pm.response.code === 200) {",
+                  "    const responseJson = pm.response.json();",
+                  "    console.log(`Status: ${responseJson.status}`);",
+                  "    console.log(`Steps completed: ${responseJson.steps.length}`);",
+                  "    responseJson.steps.forEach((step, index) => {",
+                  "        console.log(`  ${index + 1}. ${step.step_name}: ${step.status}`);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar Todas las Sagas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{bff_base_url}}/api/v1/sagas?limit=10",
+              "host": ["{{bff_base_url}}"],
+              "path": ["api", "v1", "sagas"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "saga_type",
+                  "value": "CompleteAffiliateRegistration",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "COMPLETED",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Estadísticas de Sagas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{bff_base_url}}/api/v1/sagas/statistics",
+              "host": ["{{bff_base_url}}"],
+              "path": ["api", "v1", "sagas", "statistics"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "COMPENSACIONES Y DEBUG",
+      "description": "Endpoints para testing de compensaciones y diagnóstico",
+      "item": [
+        {
+          "name": "Forzar Compensación (Testing)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{bff_base_url}}/api/v1/sagas/{{saga_id}}/compensate",
+              "host": ["{{bff_base_url}}"],
+              "path": ["api", "v1", "sagas", "{{saga_id}}", "compensate"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Health Check - Sistema de Sagas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{bff_base_url}}/api/v1/health/sagas",
+              "host": ["{{bff_base_url}}"],
+              "path": ["api", "v1", "health", "sagas"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Estado de Microservicios",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{bff_base_url}}/api/v1/services/status",
+              "host": ["{{bff_base_url}}"],
+              "path": ["api", "v1", "services", "status"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "💾 CASOS DE PRUEBA ESPECÍFICOS",
+      "description": "Casos de prueba para diferentes escenarios de saga",
+      "item": [
+        {
+          "name": "Caso 1 - Saga Exitosa",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"affiliate_name\": \"María García\",\n  \"affiliate_email\": \"maria.garcia@example.com\",\n  \"commission_rate\": 0.12,\n  \"content_type\": \"VIDEO\",\n  \"content_title\": \"Tutorial de E-commerce\",\n  \"content_description\": \"Tutorial completo sobre cómo crear una tienda en línea exitosa\",\n  \"collaboration_type\": \"VIDEO_CREATION\"\n}"
+            },
+            "url": {
+              "raw": "{{bff_base_url}}/api/v1/sagas/complete-affiliate-registration",
+              "host": ["{{bff_base_url}}"],
+              "path": ["api", "v1", "sagas", "complete-affiliate-registration"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Caso 2 - Email Duplicado (Para probar fallo)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"affiliate_name\": \"Usuario Duplicado\",\n  \"affiliate_email\": \"juan.perez@example.com\",\n  \"commission_rate\": 0.10,\n  \"content_type\": \"PODCAST\",\n  \"content_title\": \"Podcast de Tecnología\",\n  \"content_description\": \"Serie de podcasts sobre las últimas tendencias tecnológicas\",\n  \"collaboration_type\": \"PODCAST_CREATION\"\n}"
+            },
+            "url": {
+              "raw": "{{bff_base_url}}/api/v1/sagas/complete-affiliate-registration",
+              "host": ["{{bff_base_url}}"],
+              "path": ["api", "v1", "sagas", "complete-affiliate-registration"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Caso 3 - Tasa de Comisión Inválida",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"affiliate_name\": \"Test Usuario\",\n  \"affiliate_email\": \"test.invalid@example.com\",\n  \"commission_rate\": 1.5,\n  \"content_type\": \"BLOG\",\n  \"content_title\": \"Contenido de Prueba\",\n  \"content_description\": \"Este es un contenido de prueba para validar fallos\",\n  \"collaboration_type\": \"CONTENT_CREATION\"\n}"
+            },
+            "url": {
+              "raw": "{{bff_base_url}}/api/v1/sagas/complete-affiliate-registration",
+              "host": ["{{bff_base_url}}"],
+              "path": ["api", "v1", "sagas", "complete-affiliate-registration"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "🏥 HEALTH CHECKS",
+      "description": "Verificación de estado de servicios",
+      "item": [
+        {
+          "name": "BFF Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{bff_base_url}}/health",
+              "host": ["{{bff_base_url}}"],
+              "path": ["health"]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Pre-request script global",
+          "console.log('Ejecutando request:', pm.info.requestName);"
+        ]
+      }
+    }
+  ]
+}

@@ -71,7 +71,7 @@ curl http://localhost:8080/admin/v2/clusters
 
 ---
 
-## 🧪 Prueba de Concepto - Publicación de contenido auténtico
+## Prueba de Concepto - Publicación de contenido auténtico
 
 Esta sección demuestra el **flujo completo** del servicio de contenido, desde la creación de afiliados hasta publicación de contenido auténtico.
 
@@ -212,7 +212,7 @@ curl -X POST "http://localhost:8081/dev/seed_affiliate" \
 
 ---
 
-## 📊 Resultados Esperados
+## Resultados Esperados
 
 Después de ejecutar todas las pruebas, deberías ver:
 
@@ -258,7 +258,7 @@ Para facilitar las pruebas, aquí tienes un script completo:
 ```bash
 #!/bin/bash
 
-echo "🚀 Iniciando prueba de concepto - Comisiones por Evento"
+echo "Iniciando prueba de concepto - Comisiones por Evento"
 
 # Verificar conexión a Pulsar
 echo "🔍 Paso 0: Verificando conexión a Pulsar..."
@@ -266,7 +266,7 @@ PULSAR_HEALTH=$(curl -s "http://localhost:8081/dev/pulsar/health")
 PULSAR_STATUS=$(echo $PULSAR_HEALTH | jq -r '.status')
 
 if [ "$PULSAR_STATUS" != "connected" ]; then
-    echo "❌ Pulsar no conectado. Intentando crear topics..."
+    echo "Pulsar no conectado. Intentando crear topics..."
     curl -s -X POST "http://localhost:8081/dev/pulsar/create-topics" > /dev/null
     sleep 2
 fi
@@ -283,13 +283,13 @@ AFFILIATE_RESPONSE=$(curl -s -X POST "http://localhost:8081/dev/seed_affiliate" 
   }')
 
 AFFILIATE_ID=$(echo $AFFILIATE_RESPONSE | jq -r '.affiliate_id')
-echo "✅ Afiliado creado: $AFFILIATE_ID"
+echo "Afiliado creado: $AFFILIATE_ID"
 
 # Probar publicación de eventos
 echo "📡 Paso 1.5: Probando publicación de eventos..."
 TEST_PUBLISH=$(curl -s -X POST "http://localhost:8081/dev/pulsar/test-publish")
 TEST_STATUS=$(echo $TEST_PUBLISH | jq -r '.status')
-echo "📊 Estado de publicación: $TEST_STATUS"
+echo "Estado de publicación: $TEST_STATUS"
 
 # Registrar contenido
 echo "💰 Paso 2: Registrando contenido..."
@@ -302,11 +302,11 @@ CONVERSION_RESPONSE=$(curl -s -X POST "http://localhost:8081/contents" \
     \"tipo\": \"Reseña\"
   }")
 
-echo "✅ Contenido registrado"
+echo "Contenido registrado"
 echo "📄 Respuesta: $CONTENT_RESPONSE"
 
 # Esperar procesamiento
-echo "⏳ Esperando procesamiento de eventos..."
+echo "Esperando procesamiento de eventos..."
 sleep 3
 
 # Verificar topics creados
@@ -315,7 +315,7 @@ TOPICS_RESPONSE=$(curl -s "http://localhost:8081/dev/pulsar/topics")
 echo $TOPICS_RESPONSE | jq '.count, .topics[]' 2>/dev/null || echo "Topics: $TOPICS_RESPONSE"
 
 # Consultar contenidos
-echo "📊 Paso 3: Consultando contenidos generados..."
+echo "Paso 3: Consultando contenidos generados..."
 CONTENTS=$(curl -s "http://localhost:8081/affiliates/$AFFILIATE_ID/contents")
 echo $CONTENTS | jq '.' 2>/dev/null || echo "Contenidos: $CONTENTS"
 
@@ -607,7 +607,7 @@ curl http://localhost:8080/admin/v2/persistent/public/default/contenidos.creados
 
 ---
 
-## 🔄 Reset y Limpieza
+## Reset y Limpieza
 
 ### Limpiar Datos de Prueba
 

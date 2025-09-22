@@ -72,7 +72,7 @@ curl http://localhost:8080/admin/v2/clusters
 
 ---
 
-## 🧪 Prueba de Concepto - Comisiones por Evento
+## Prueba de Concepto - Comisiones por Evento
 
 Esta sección demuestra el **flujo completo** del servicio de comisiones por evento basado en **arquitectura de eventos**. Los endpoints publican eventos en Apache Pulsar y los consumidores ejecutan los comandos correspondientes de forma asíncrona.
 
@@ -269,7 +269,7 @@ curl -X POST "http://localhost:8081/dev/seed_affiliate" \
 
 ---
 
-## 📊 Resultados Esperados
+## Resultados Esperados
 
 Después de ejecutar todas las pruebas, deberías ver:
 
@@ -316,7 +316,7 @@ Para facilitar las pruebas, aquí tienes un script completo:
 ```bash
 #!/bin/bash
 
-echo "🚀 Iniciando prueba de concepto - Comisiones por Evento"
+echo "Iniciando prueba de concepto - Comisiones por Evento"
 
 # Verificar conexión a Pulsar
 echo "🔍 Paso 0: Verificando conexión a Pulsar..."
@@ -324,7 +324,7 @@ PULSAR_HEALTH=$(curl -s "http://localhost:8081/dev/pulsar/health")
 PULSAR_STATUS=$(echo $PULSAR_HEALTH | jq -r '.status')
 
 if [ "$PULSAR_STATUS" != "connected" ]; then
-    echo "❌ Pulsar no conectado. Intentando crear topics..."
+    echo "Pulsar no conectado. Intentando crear topics..."
     curl -s -X POST "http://localhost:8081/dev/pulsar/create-topics" > /dev/null
     sleep 2
 fi
@@ -340,13 +340,13 @@ AFFILIATE_RESPONSE=$(curl -s -X POST "http://localhost:8081/dev/seed_affiliate" 
   }')
 
 AFFILIATE_ID=$(echo $AFFILIATE_RESPONSE | jq -r '.affiliate_id')
-echo "✅ Afiliado creado: $AFFILIATE_ID"
+echo "Afiliado creado: $AFFILIATE_ID"
 
 # Probar publicación de eventos
 echo "📡 Paso 1.5: Probando publicación de eventos..."
 TEST_PUBLISH=$(curl -s -X POST "http://localhost:8081/dev/pulsar/test-publish")
 TEST_STATUS=$(echo $TEST_PUBLISH | jq -r '.status')
-echo "📊 Estado de publicación: $TEST_STATUS"
+echo "Estado de publicación: $TEST_STATUS"
 
 # Registrar conversión
 echo "💰 Paso 2: Registrando conversión..."
@@ -359,11 +359,11 @@ CONVERSION_RESPONSE=$(curl -s -X POST "http://localhost:8081/dev/conversions" \
     \"moneda\": \"USD\"
   }")
 
-echo "✅ Conversión registrada"
+echo "Conversión registrada"
 echo "📄 Respuesta: $CONVERSION_RESPONSE"
 
 # Esperar procesamiento
-echo "⏳ Esperando procesamiento de eventos..."
+echo "Esperando procesamiento de eventos..."
 sleep 3
 
 # Verificar topics creados
@@ -372,7 +372,7 @@ TOPICS_RESPONSE=$(curl -s "http://localhost:8081/dev/pulsar/topics")
 echo $TOPICS_RESPONSE | jq '.count, .topics[]' 2>/dev/null || echo "Topics: $TOPICS_RESPONSE"
 
 # Consultar comisiones
-echo "📊 Paso 3: Consultando comisiones generadas..."
+echo "Paso 3: Consultando comisiones generadas..."
 COMMISSIONS=$(curl -s "http://localhost:8081/affiliates/$AFFILIATE_ID/commissions")
 echo $COMMISSIONS | jq '.' 2>/dev/null || echo "Comisiones: $COMMISSIONS"
 
@@ -699,7 +699,7 @@ curl http://localhost:8080/admin/v2/persistent/public/default/comisiones.creadas
 
 ---
 
-## 🔄 Reset y Limpieza
+## Reset y Limpieza
 
 ### Limpiar Datos de Prueba
 

@@ -75,13 +75,13 @@ class Despachador:
             producer.send(mensaje_json.encode('utf-8'))
             producer.close()
             
-            logger.info(f"✅ Evento enviado a '{topico}': {evento.get('event_type', 'Unknown')}")
+            logger.info(f"Evento enviado a '{topico}': {evento.get('event_type', 'Unknown')}")
             logger.debug(f"Datos: {json.dumps(evento, indent=2)}")
             
             return True
             
         except Exception as e:
-            logger.error(f"❌ Error publicando evento: {e}")
+            logger.error(f"Error publicando evento: {e}")
             return False
     
     def close(self):

@@ -211,3 +211,48 @@ services:
       - db-colaboraciones
     networks:
       - pulsar
+
+  # Base de datos para Saga Log
+  db-saga:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: saga
+      POSTGRES_USER: saga
+      POSTGRES_PASSWORD: saga
+    ports:
+      - "5435:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U saga"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pulsar
+
+  # BFF Service - Backend for Frontend
+  bff-service:
+    container_name: bff-service
+    hostname: bff-service
+    build:
+      context: ./bff-service
+      dockerfile: bff.Dockerfile
+    profiles: ["bff", "pulsar"]
+    networks:
+      - pulsar
+    depends_on:
+      - broker
+      - db-saga
+      - afiliados-comisiones
+      - monitoreo
+      - colaboraciones-servicio
+    environment:
+      - APP_ENV=dev
+      - SAGA_DATABASE_URL=postgresql+psycopg2://saga:saga@db-saga:5432/saga
+      - LEALTAD_CONTENIDO_URL=http://lealtad-contenido:8080
+      - AFILIADOS_COMISIONES_URL=http://afiliados-comisiones:8081
+      - COLABORACIONES_URL=http://colaboraciones-servicio:8083
+      - MONITOREO_URL=http://monitoreo:8082
+      - PULSAR_URL=pulsar://broker:6650
+      - BROKER_HOST=broker
+    ports:
+      - "8000:8080"

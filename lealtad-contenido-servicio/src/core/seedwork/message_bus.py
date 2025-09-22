@@ -21,7 +21,7 @@ class MessageBus:
         logger.info(f"🚌 MessageBus: Handlers disponibles: {list(self._command_handlers.keys())}")
         
         if command_type not in self._command_handlers:
-            logger.error(f"❌ MessageBus: No handler encontrado para {command_type}")
+            logger.error(f"MessageBus: No handler encontrado para {command_type}")
             raise KeyError(f"No handler registered for {command_type}")
             
         handler = self._command_handlers[command_type]
