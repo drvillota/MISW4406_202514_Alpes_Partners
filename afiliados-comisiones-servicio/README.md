@@ -74,7 +74,7 @@ curl http://localhost:8080/admin/v2/clusters
 
 ## 🧪 Prueba de Concepto - Comisiones por Evento
 
-Esta sección demuestra el **flujo completo** del servicio de comisiones por evento, desde la creación de afiliados hasta el cálculo automático de comisiones.
+Esta sección demuestra el **flujo completo** del servicio de comisiones por evento basado en **arquitectura de eventos**. Los endpoints publican eventos en Apache Pulsar y los consumidores ejecutan los comandos correspondientes de forma asíncrona.
 
 ### Paso 1: Crear un Afiliado
 
@@ -84,33 +84,35 @@ Esta sección demuestra el **flujo completo** del servicio de comisiones por eve
 curl -X POST "http://localhost:8081/dev/seed_affiliate" \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "María García",
-    "email": "maria.garcia@empresa.com",
-    "commission_rate": 15.0
+    "name": "Juan Pérez",
+    "email": "juan@example.com",
+    "commission_rate": 0.05
   }'
 ```
 
 **Respuesta esperada**:
 ```json
 {
+  "status": "requested",
+  "message": "Affiliate registration published to event stream",
   "affiliate_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 }
 ```
 
-> **Guarda el `affiliate_id`** devuelto para los siguientes pasos.
+> **Guarda el `affiliate_id`** devuelto para los siguientes pasos. Este endpoint publica un evento `AffiliateRegistered` que será procesado por los consumidores.
 
 ### Paso 2: Registrar una Conversión (Evento de Compra)
 
-**Endpoint**: `POST /conversions`
+**Endpoint**: `POST /dev/conversions`
 
 ```bash
 # Reemplaza <AFFILIATE_ID> con el ID obtenido en el paso anterior
-curl -X POST "http://localhost:8081/conversions" \
+curl -X POST "http://localhost:8081/dev/conversions" \
   -H "Content-Type: application/json" \
   -d '{
     "affiliate_id": "<AFFILIATE_ID>",
     "event_type": "COMPRA",
-    "monto": 500.00,
+    "monto": 100.0,
     "moneda": "USD"
   }'
 ```
@@ -118,20 +120,45 @@ curl -X POST "http://localhost:8081/conversions" \
 **Respuesta esperada**:
 ```json
 {
-  "message": "Conversion registered successfully",
-  "conversion_id": "b2c3d4e5-f6g7-8901-bcde-f23456789012"
+  "status": "requested",
+  "message": "Conversion request published to event stream",
+  "affiliate_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "event_type": "COMPRA",
+  "timestamp": "2025-09-21T10:30:00Z"
 }
 ```
 
 **Lo que sucede internamente**:
-1. Se registra el evento de conversión en la base de datos
-2. Se emite un evento de dominio `ConversionRegistrada`
-3. El módulo de comisiones escucha el evento
-4. Se calcula automáticamente la comisión (500.00 × 15% = 75.00 USD)
-5. Se persiste la comisión en la base de datos
+1. Se publica un evento `ConversionRequested` en Apache Pulsar
+2. Los consumidores de eventos detectan el evento
+3. Se ejecuta automáticamente `RegistrarConversionCommand` 
+4. Se calcula la comisión (100.0 × 5% = 5.00 USD)
+5. Se persiste la conversión y comisión en la base de datos
 6. Se emite un evento `ComisionCreada` para integración
 
-### Paso 3: Consultar Comisiones Generadas
+### Paso 3: Consultar Afiliado Creado
+
+**Endpoint**: `GET /affiliates/{affiliate_id}`
+
+```bash
+# Reemplaza <AFFILIATE_ID> con el ID del afiliado
+curl "http://localhost:8081/affiliates/<AFFILIATE_ID>"
+```
+
+**Respuesta esperada**:
+```json
+{
+  "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "name": "Juan Pérez",
+  "email": "juan@example.com",
+  "commission_rate": 0.05,
+  "created_at": "2025-09-21T10:25:00Z",
+  "status": "active",
+  "timestamp": "2025-09-21T10:30:00Z"
+}
+```
+
+### Paso 4: Consultar Comisiones Generadas
 
 **Endpoint**: `GET /affiliates/{affiliate_id}/commissions`
 
@@ -145,26 +172,60 @@ curl "http://localhost:8081/affiliates/<AFFILIATE_ID>/commissions"
 {
   "affiliate_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "total_commissions": 1,
-  "total_amount": 75.00,
-  "currency": "USD",
   "commissions": [
     {
       "id": "c3d4e5f6-g7h8-9012-cdef-345678901234",
-      "conversion_id": "b2c3d4e5-f6g7-8901-bcde-f23456789012",
-      "amount": 75.00,
+      "affiliate_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "amount": 5.0,
       "currency": "USD",
-      "status": "pending",
-      "calculated_at": "2024-01-15T10:30:00Z"
+      "conversion_id": "b2c3d4e5-f6g7-8901-bcde-f23456789012",
+      "created_at": "2025-09-21T10:30:00Z",
+      "status": "active"
     }
-  ]
+  ],
+  "query_period": {
+    "desde": null,
+    "hasta": null
+  },
+  "timestamp": "2025-09-21T10:35:00Z"
 }
 ```
 
-### Paso 4: Registrar Múltiples Conversiones (Prueba de Volumen)
+### Paso 5: Consultar Comisiones Filtradas por Fecha
+
+```bash
+# Consultar comisiones desde una fecha específica
+curl "http://localhost:8081/affiliates/<AFFILIATE_ID>/commissions?desde=2025-01-01"
+
+# Consultar comisiones en un rango de fechas
+curl "http://localhost:8081/affiliates/<AFFILIATE_ID>/commissions?desde=2025-01-01&hasta=2025-12-31"
+```
+
+### Paso 6: Diagnosticar Apache Pulsar
+
+**Verificar Estado de Conexión**:
+```bash
+# Verificar si el servicio puede conectarse a Pulsar
+curl "http://localhost:8081/dev/pulsar/health"
+```
+
+**Crear Topics Necesarios**:
+```bash
+# Crear todos los topics necesarios
+curl -X POST "http://localhost:8081/dev/pulsar/create-topics"
+```
+
+**Listar Topics Existentes**:
+```bash
+# Ver todos los topics disponibles
+curl "http://localhost:8081/dev/pulsar/topics"
+```
+
+### Paso 7: Registrar Múltiples Conversiones (Prueba de Volumen)
 
 ```bash
 # Conversión de registro (evento diferente)
-curl -X POST "http://localhost:8081/conversions" \
+curl -X POST "http://localhost:8081/dev/conversions" \
   -H "Content-Type: application/json" \
   -d '{
     "affiliate_id": "<AFFILIATE_ID>",
@@ -173,8 +234,8 @@ curl -X POST "http://localhost:8081/conversions" \
     "moneda": "USD"
   }'
 
-# Otra compra
-curl -X POST "http://localhost:8081/conversions" \
+# Otra compra con mayor monto
+curl -X POST "http://localhost:8081/dev/conversions" \
   -H "Content-Type: application/json" \
   -d '{
     "affiliate_id": "<AFFILIATE_ID>",
@@ -184,17 +245,7 @@ curl -X POST "http://localhost:8081/conversions" \
   }'
 ```
 
-### Paso 5: Consultar Comisiones Filtradas por Fecha
-
-```bash
-# Consultar comisiones desde una fecha específica
-curl "http://localhost:8081/affiliates/<AFFILIATE_ID>/commissions?desde=2024-01-01T00:00:00Z"
-
-# Consultar comisiones en un rango de fechas
-curl "http://localhost:8081/affiliates/<AFFILIATE_ID>/commissions?desde=2024-01-01T00:00:00Z&hasta=2024-01-31T23:59:59Z"
-```
-
-### Paso 6: Crear Múltiples Afiliados para Pruebas Avanzadas
+### Paso 8: Crear Múltiples Afiliados para Pruebas Avanzadas
 
 ```bash
 # Afiliado con comisión alta
@@ -203,7 +254,7 @@ curl -X POST "http://localhost:8081/dev/seed_affiliate" \
   -d '{
     "name": "Carlos Rodríguez",
     "email": "carlos.rodriguez@premium.com",
-    "commission_rate": 25.0
+    "commission_rate": 0.25
   }'
 
 # Afiliado con comisión baja
@@ -212,7 +263,7 @@ curl -X POST "http://localhost:8081/dev/seed_affiliate" \
   -d '{
     "name": "Ana López",
     "email": "ana.lopez@startup.com",
-    "commission_rate": 8.5
+    "commission_rate": 0.085
   }'
 ```
 
@@ -299,7 +350,7 @@ echo "📊 Estado de publicación: $TEST_STATUS"
 
 # Registrar conversión
 echo "💰 Paso 2: Registrando conversión..."
-CONVERSION_RESPONSE=$(curl -s -X POST "http://localhost:8081/conversions" \
+CONVERSION_RESPONSE=$(curl -s -X POST "http://localhost:8081/dev/conversions" \
   -H "Content-Type: application/json" \
   -d "{
     \"affiliate_id\": \"$AFFILIATE_ID\",

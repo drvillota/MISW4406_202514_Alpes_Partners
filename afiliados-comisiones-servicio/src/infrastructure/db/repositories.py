@@ -47,22 +47,6 @@ class AffiliateRepository:
             active=model.active
         )
     
-    def get_by_email(self, email: str) -> Optional[Affiliate]:
-        """Obtener afiliado por email"""
-        stmt = select(AffiliateModel).where(AffiliateModel.email == email)
-        model = self.session.execute(stmt).scalar_one_or_none()
-        
-        if not model:
-            return None
-            
-        return Affiliate(
-            id=UUID(str(model.id)) if isinstance(model.id, str) else model.id,
-            name=model.name,
-            email=model.email,
-            commission_rate=Decimal(str(model.commission_rate)),
-            created_at=model.created_at,
-            active=model.active
-        )
     
     def list_all(self, active_only: bool = False) -> List[Affiliate]:
         """Listar afiliados"""
@@ -83,13 +67,6 @@ class AffiliateRepository:
             )
             for model in models
         ]
-    
-    def update_status(self, affiliate_id: UUID, active: bool) -> None:
-        """Actualizar estado del afiliado"""
-        model = self.session.get(AffiliateModel, affiliate_id)
-        if model:
-            model.active = active
-            self.session.commit()
 
 class ConversionEventRepository:
     """Repositorio simplificado para Eventos de Conversión"""

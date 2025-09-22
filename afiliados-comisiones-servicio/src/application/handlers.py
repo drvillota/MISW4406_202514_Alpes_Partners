@@ -7,14 +7,10 @@ from sqlalchemy.orm import Session
 
 from .commands import (
     RegisterAffiliateCommand,
-    ActivateAffiliateCommand,
-    DeactivateAffiliateCommand,
     ProcessConversionCommand,
     RegistrarConversionCommand,
     GetAffiliateQuery,
     ListCommissionsQuery,
-    ListAffiliatesQuery,
-    ConsultarComisionesPorAfiliadoQuery
 )
 from .services import AffiliateService, ConversionService
 from ..domain.entities import Affiliate, Commission, ConversionEvent
@@ -39,23 +35,7 @@ class CommandHandler:
         except Exception:
             self.session.rollback()
             raise
-    
-    def handle_activate_affiliate(self, command: ActivateAffiliateCommand) -> None:
-        """Activar afiliado"""
-        try:
-            self.affiliate_service.activate_affiliate(command.affiliate_id)
-        except Exception:
-            self.session.rollback()
-            raise
-    
-    def handle_deactivate_affiliate(self, command: DeactivateAffiliateCommand) -> None:
-        """Desactivar afiliado"""
-        try:
-            self.affiliate_service.deactivate_affiliate(command.affiliate_id)
-        except Exception:
-            self.session.rollback()
-            raise
-    
+
     def handle_process_conversion(self, command: ProcessConversionCommand) -> dict:
         """Procesar conversión y calcular comisión"""
         try:
@@ -113,10 +93,6 @@ class QueryHandler:
         """Obtener afiliado por ID"""
         return self.affiliate_service.get_affiliate(query.affiliate_id)
     
-    def handle_list_affiliates(self, query: ListAffiliatesQuery) -> List[Affiliate]:
-        """Listar afiliados"""
-        return self.affiliate_service.list_affiliates(query.active_only)
-    
     def handle_list_commissions(self, query: ListCommissionsQuery) -> List[Commission]:
         """Listar comisiones de un afiliado"""
         return self.conversion_service.get_commissions_for_affiliate(
@@ -124,26 +100,6 @@ class QueryHandler:
             start_date=query.start_date,
             end_date=query.end_date
         )
-    
-    def handle_consultar_comisiones_por_afiliado(self, query: ConsultarComisionesPorAfiliadoQuery) -> List[dict]:
-        """Consultar comisiones por afiliado (compatibilidad con routes.py)"""
-        commissions = self.conversion_service.get_commissions_for_affiliate(
-            affiliate_id=query.affiliate_id,
-            start_date=query.desde,
-            end_date=query.hasta
-        )
-        
-        # Convertir a formato JSON serializable
-        return [
-            {
-                "commission_id": str(commission.id),
-                "affiliate_id": str(commission.affiliate_id),
-                "amount": float(commission.amount),
-                "currency": commission.currency,
-                "status": commission.status
-            }
-            for commission in commissions
-        ]
 
 # Factory para crear handlers
 def create_handlers(session: Session):
