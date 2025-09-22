@@ -5,7 +5,7 @@ import logging
 from uuid import uuid4, UUID
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Request
 from pydantic import BaseModel, Field
 
 from infrastructure.saga_log import SagaLogRepository, SagaStatus
@@ -49,7 +49,7 @@ class SagaStatusResponse(BaseModel):
 
 # === DEPENDENCIAS ===
 
-async def get_saga_repository(request) -> SagaLogRepository:
+async def get_saga_repository(request: Request) -> SagaLogRepository:
     """Obtener repositorio de saga log"""
     return request.app.state.saga_repo
 
@@ -82,7 +82,7 @@ async def complete_affiliate_registration(
             saga_id=saga_id,
             saga_type="CompleteAffiliateRegistration",
             correlation_id=correlation_id,
-            metadata={
+            saga_metadata={
                 "affiliate_name": request.affiliate_name,
                 "affiliate_email": request.affiliate_email,
                 "initiated_at": datetime.now(timezone.utc).isoformat()
