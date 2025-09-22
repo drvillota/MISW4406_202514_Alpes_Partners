@@ -7,6 +7,7 @@ para contratos y colaboraciones con influencers en el dominio de marketing.
 from dataclasses import dataclass, field
 from typing import List
 
+from core.seedworks.entidades import Entidad 
 from core.seedworks.objetos_valor import (
     Identificador,
     Email,
@@ -26,7 +27,7 @@ from core.seedworks.objetos_valor import (
 # -------------------------------
 
 @dataclass
-class Influencer:
+class Influencer(Entidad):
     nombre: str
     email: Email
     identidades: List[IdentidadEnRed] = field(default_factory=list)
@@ -37,14 +38,14 @@ class Influencer:
         self.identidades.append(identidad)
 
 @dataclass
-class Campania:
+class Campania(Entidad):
     nombre: NombreCampania
     marca: str
     periodo: Periodo
     estado: EstadoCampania
 
 @dataclass
-class Contrato:
+class Contrato(Entidad):
     periodo: Periodo
     estado: EstadoContrato
 
@@ -59,7 +60,7 @@ class Colaboracion:
     influencer: Influencer
     contrato: Contrato
     estado: EstadoColaboracion
-    publicaciones: List[Identificador] = field(default_factory=list)
+    publicaciones: List[str] = field(default_factory=list)
     
     def firmar_contrato(self):
         if self.contrato.estado.valor != "PENDIENTE":

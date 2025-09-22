@@ -3,7 +3,7 @@
 import logging
 from datetime import datetime
 from typing import Any, Dict, Optional
-from ...domain.eventos import (
+from domain.eventos import (
     ColaboracionIniciada,
     ContratoFirmado,
     ContratoCancelado,

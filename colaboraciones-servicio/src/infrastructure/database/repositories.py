@@ -2,12 +2,11 @@
 
 from uuid import UUID
 from typing import Optional
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 # Entidades de dominio
-from ...domain.entidades import Colaboracion, Campania, Influencer, Contrato
-from ...core.seedworks.objetos_valor import (
+from domain.entidades import Colaboracion, Campania, Influencer, Contrato
+from core.seedworks.objetos_valor import (
     Identificador,
     EstadoColaboracion,
     EstadoCampania,
@@ -20,6 +19,7 @@ from ...core.seedworks.objetos_valor import (
 # Modelos de infraestructura
 from .dto import ColaboracionModel, CampaniaModel, InfluencerModel, ContratoModel
 
+
 class ColaboracionRepository:
     """Repositorio simplificado para la raíz de agregación Colaboracion"""
 
@@ -27,9 +27,9 @@ class ColaboracionRepository:
         self.session = session
 
     def agregar(self, colaboracion: Colaboracion) -> None:
-        """Guardar nueva colaboración, usando campaña e influencer existentes si aplica"""
+        """Guardar nueva colaboración, usando campaña, influencer y contrato ya existentes si aplica"""
 
-        # Buscar campaña existente
+        # Buscar campaña existente o crearla si no existe
         campania_model = self.session.get(CampaniaModel, colaboracion.campania.id.codigo)
         if not campania_model:
             campania_model = CampaniaModel(
@@ -42,7 +42,7 @@ class ColaboracionRepository:
             )
             self.session.add(campania_model)
 
-        # Buscar influencer existente
+        # Buscar influencer existente o crearlo si no existe
         influencer_model = self.session.get(InfluencerModel, colaboracion.influencer.id.codigo)
         if not influencer_model:
             influencer_model = InfluencerModel(
@@ -52,15 +52,13 @@ class ColaboracionRepository:
             )
             self.session.add(influencer_model)
 
-        # Crear contrato
-        contrato_model = ContratoModel(
-            id=colaboracion.contrato.id.codigo,
-            colaboracion_id=colaboracion.id.codigo,
-            fecha_inicio=colaboracion.contrato.periodo.inicio,
-            fecha_fin=colaboracion.contrato.periodo.fin,
-            estado=colaboracion.contrato.estado.valor,
-        )
-        self.session.add(contrato_model)
+        # Buscar contrato existente (no lo creamos aquí)
+        contrato_model = self.session.get(ContratoModel, colaboracion.contrato.id.codigo)
+        if not contrato_model:
+            raise ValueError(
+                f"El contrato {colaboracion.contrato.id.codigo} no existe, "
+                "debe ser creado antes de asociar una colaboración"
+            )
 
         # Crear colaboración
         colaboracion_model = ColaboracionModel(
@@ -121,3 +119,28 @@ class ColaboracionRepository:
             estado=EstadoColaboracion(model.estado),
             publicaciones=publicaciones or [],  # nunca None
         )
+
+    def actualizar(self, colaboracion: Colaboracion) -> None:
+        """Actualizar una colaboración existente (ej. nuevas publicaciones o cambio de estado)"""
+        model = self.session.get(ColaboracionModel, colaboracion.id.codigo)
+        if not model:
+            raise ValueError(f"Colaboración {colaboracion.id.codigo} no encontrada")
+
+        # Actualizar estado
+        model.estado = colaboracion.estado.valor
+
+        # Actualizar publicaciones (serializadas como lista de dicts)
+        if colaboracion.publicaciones:
+            model.publicaciones = [
+                {
+                    "url": pub.url,
+                    "red": pub.red,
+                    "fecha": pub.fecha.isoformat() if hasattr(pub.fecha, "isoformat") else str(pub.fecha),
+                }
+                for pub in colaboracion.publicaciones
+            ]
+        else:
+            model.publicaciones = []
+
+        self.session.add(model)
+        self.session.commit()

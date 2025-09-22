@@ -8,11 +8,11 @@ import _pulsar
 import aiopulsar
 from pulsar.schema import AvroSchema, Record
 from typing import Callable, Any, Dict
-from ..schemas.schemas import (
+from infrastructure.schemas.schemas import (
     ColaboracionIniciadaSchema,
     PublicacionRegistradaSchema,
 )
-from ..schemas.utils import broker_host  # asumiendo que ya lo tienes
+from infrastructure.schemas.utils import broker_host  # asumiendo que ya lo tienes
 
 logger = logging.getLogger(__name__)
 
@@ -31,8 +31,6 @@ class ColaboracionEventConsumer:
         try:
             self.consumer_tasks = [
                 asyncio.create_task(self.consume_publicacion_registrada()),
-                # Si más adelante necesitas escuchar a "colaboracion-iniciada"
-                # puedes agregar otro consumer aquí.
             ]
 
             logger.info("ColaboracionEventConsumer: iniciando consumers…")
@@ -138,3 +136,10 @@ class ColaboracionEventConsumer:
                 self.event_handler(event)
         except Exception as e:
             logger.error(f"Error en event_handler: {e}")
+
+    async def consume_diagnostico(self):
+        await self._consume_topic_with_retry(
+            topic="diagnostico",
+            subscription="diagnostico-sub",
+            schema=AvroSchema(ColaboracionIniciadaSchema) 
+        )

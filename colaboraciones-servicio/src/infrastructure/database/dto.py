@@ -5,7 +5,7 @@ from sqlalchemy import String, Date, DateTime, ForeignKey, JSON
 from sqlalchemy.dialects.postgresql import UUID
 from datetime import datetime, date
 from uuid import uuid4
-from .sqlalchemy import Base
+from infrastructure.database.connection import Base
 
 
 class CampaniaModel(Base):
@@ -36,44 +36,26 @@ class InfluencerModel(Base):
 
 
 class ContratoModel(Base):
-    """Modelo de Contrato"""
     __tablename__ = "contratos"
 
     id: Mapped[str] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    colaboracion_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("colaboraciones.id"), nullable=False
-    )
     fecha_inicio: Mapped[date] = mapped_column(Date, nullable=False)
     fecha_fin: Mapped[date] = mapped_column(Date, nullable=False)
     estado: Mapped[str] = mapped_column(String(20), nullable=False, default="PENDIENTE")
 
-    # Relaciones
-    colaboracion = relationship("ColaboracionModel", back_populates="contrato")
-
+    colaboracion = relationship("ColaboracionModel", back_populates="contrato", uselist=False)
 
 class ColaboracionModel(Base):
-    """Modelo de Colaboración (raíz de agregación)"""
     __tablename__ = "colaboraciones"
 
-    id: Mapped[str] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    campania_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("campanias.id"), nullable=False
-    )
-    influencer_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("influencers.id"), nullable=False
-    )
-    contrato_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("contratos.id"), nullable=False
-    )
-    estado: Mapped[str] = mapped_column(String(20), nullable=False, default="VIGENTE")
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.utcnow
-    )
+    id = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    campania_id = mapped_column(UUID(as_uuid=True), ForeignKey("campanias.id"), nullable=False)
+    influencer_id = mapped_column(UUID(as_uuid=True), ForeignKey("influencers.id"), nullable=False)
+    contrato_id = mapped_column(UUID(as_uuid=True), ForeignKey("contratos.id"), nullable=False)
+    estado = mapped_column(String(20), nullable=False, default="VIGENTE")
+    created_at = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    publicaciones = mapped_column(JSON, nullable=False, default=list)
 
-    # Campo JSONB para publicaciones
-    publicaciones: Mapped[dict] = mapped_column(JSON, nullable=False, default=list)
-
-    # Relaciones
     campania = relationship("CampaniaModel", back_populates="colaboraciones")
     influencer = relationship("InfluencerModel", back_populates="colaboraciones")
-    contrato = relationship("ContratoModel", back_populates="colaboracion")
+    contrato = relationship("ContratoModel", back_populates="colaboracion", uselist=False)

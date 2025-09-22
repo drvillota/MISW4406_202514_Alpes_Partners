@@ -13,13 +13,11 @@ from core.seedworks.comandos import Comando
 
 @dataclass
 class IniciarColaboracionComando(Comando):
-    """Comando: Crear una nueva colaboración"""
+    """Comando: Crear una nueva colaboración usando un contrato existente"""
     colaboracion_id: UUID
     campania_id: UUID
     influencer_id: UUID
-    contrato_id: UUID
-    fecha_inicio: date
-    fecha_fin: date
+    contrato_id: UUID   # 🔑 ahora obligatorio, ya debe existir en BD
 
 
 @dataclass
@@ -51,8 +49,6 @@ class FinalizarColaboracionComando(Comando):
 class RegistrarPublicacionComando(Comando):
     """Comando: Registrar una publicación hecha por un influencer en una colaboración"""
     colaboracion_id: UUID
-    campania_id: UUID
-    influencer_id: UUID
     url: str
     red: str
     fecha: date

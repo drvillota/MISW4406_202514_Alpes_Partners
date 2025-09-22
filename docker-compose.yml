@@ -24,7 +24,6 @@ services:
       timeout: 5s
       retries: 30
 
-# Init cluster metadata
   pulsar-init:
     container_name: pulsar-init
     hostname: pulsar-init
@@ -37,7 +36,6 @@ services:
       zookeeper:
         condition: service_healthy
 
-# Start bookie
   bookie:
     image: apachepulsar/pulsar:latest
     profiles: ["pulsar"]
@@ -54,13 +52,10 @@ services:
         condition: service_healthy
       pulsar-init:
         condition: service_completed_successfully
-  # Map the local directory to the container to avoid bookie startup failure due to insufficient container disks.
     volumes:
       - ./data/bookkeeper:/pulsar/data/bookkeeper
-    command: bash -c "bin/apply-config-from-env.py conf/bookkeeper.conf
-      && exec bin/pulsar bookie"
+    command: bash -c "bin/apply-config-from-env.py conf/bookkeeper.conf && exec bin/pulsar bookie"
 
-# Start broker
   broker:
     image: apachepulsar/pulsar:latest
     profiles: ["pulsar"]
@@ -88,9 +83,9 @@ services:
       - "8080:8080"
     volumes:
       - ./connectors/pulsar:/pulsar/connectors
-    command: bash -c "bin/apply-config-from-env.py conf/broker.conf
-      &&  exec bin/pulsar broker"
+    command: bash -c "bin/apply-config-from-env.py conf/broker.conf && exec bin/pulsar broker"
   
+  # Base de datos de afiliados
   db-afiliados-comisiones:
     image: postgres:15-alpine
     environment:
@@ -128,6 +123,7 @@ services:
     ports:
       - "8081:8080"
 
+  # Base de datos de monitoreo
   db-monitoreo:
     image: postgres:15-alpine
     environment:
@@ -143,6 +139,7 @@ services:
       retries: 5
     networks:
       - pulsar
+
   monitoreo:
     container_name: monitoreo
     hostname: monitoreo
@@ -164,51 +161,53 @@ services:
     ports:
       - "8082:8080"
 
+  # Base de datos de colaboraciones
   db-colaboraciones:
-    image: mysql:8.0
-    container_name: db-colaboraciones
+    image: postgres:15-alpine
     environment:
-      MYSQL_DATABASE: colaboraciones
-      MYSQL_USER: colaboraciones
-      MYSQL_PASSWORD: colaboraciones_pass
-      MYSQL_ROOT_PASSWORD: root_pass
+      POSTGRES_DB: colaboraciones
+      POSTGRES_USER: colaboraciones
+      POSTGRES_PASSWORD: colaboraciones
     ports:
-      - "3306:3306"     # mapa local -> container (opcional)
-    volumes:
-      - ./data/db-colaboraciones:/var/lib/mysql
+      - "5434:5432"
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot_pass"]
+      test: ["CMD-SHELL", "pg_isready -U colaboraciones"]
       interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 5
     networks:
       - pulsar
-    restart: unless-stopped
 
-  colaboraciones:
+  colaboraciones-servicio:
     container_name: colaboraciones-servicio
-    hostname: colaboraciones
+    hostname: colaboraciones-servicio
     build:
       context: ./colaboraciones-servicio
-      dockerfile: colaboraciones-servicio.Dockerfile
-    profiles: ["colaboraciones-servicio", "pulsar"]
+      dockerfile: colaboraciones.Dockerfile
+    profiles: ["colaboraciones", "pulsar"]
     networks:
       - pulsar
     depends_on:
-      broker:
-        condition: service_started
-      db-colaboraciones:
-        condition: service_healthy
+      - broker
+      - db-colaboraciones
     environment:
-      # variables que usa src/config/db.py (si NO usas TESTING=true)
       - APP_ENV=dev
-      - DB_USERNAME=colaboraciones
-      - DB_PASSWORD=colaboraciones_pass
-      - DB_HOSTNAME=db-colaboraciones
-      - DB_NAME=colaboraciones
+      - DATABASE_URL=postgresql+psycopg2://colaboraciones:colaboraciones@db-colaboraciones:5432/colaboraciones
       - UVICORN_PORT=8080
       - BROKER_HOST=broker
-      - TESTING=false
     ports:
-      - "8083:8080"   # expone el servicio en 8083 local -> 8080 container
-    
+      - "8083:8080"
+
+  # pgAdmin para manejar la BD de colaboraciones
+  pgadminColaboraciones:
+    image: dpage/pgadmin4
+    container_name: pgadminColaboraciones
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - db-colaboraciones
+    networks:
+      - pulsar

@@ -16,7 +16,6 @@ class ColaboracionIniciada:
     contrato_id: str
     fecha_inicio: str  # ISO8601 string
     fecha_fin: str     # ISO8601 string
-    timestamp: int     # Unix timestamp
 
 
 @dataclass
@@ -26,7 +25,6 @@ class ContratoFirmado:
     colaboracion_id: str
     campania_id: str
     influencer_id: str
-    timestamp: int
 
 
 @dataclass
@@ -37,7 +35,6 @@ class ContratoCancelado:
     campania_id: str
     influencer_id: str
     motivo: str
-    timestamp: int
 
 
 @dataclass
@@ -46,19 +43,15 @@ class ColaboracionFinalizada:
     colaboracion_id: str
     campania_id: str
     influencer_id: str
-    timestamp: int
 
 
 @dataclass
 class PublicacionRegistrada:
     """Evento: un influencer aportó contenido en una colaboración"""
     colaboracion_id: str
-    campania_id: str
-    influencer_id: str
     url: str
     red: str
-    fecha: str        # ISO8601 string
-    timestamp: int
+    fecha: str      
 
 
 # -------------------------------
@@ -70,7 +63,6 @@ class CampaniaFinalizada:
     """Evento externo: una campaña llegó a su fin"""
     campania_id: str
     fecha_fin: str
-    timestamp: int
 
 
 @dataclass
@@ -79,4 +71,3 @@ class InfluencerRegistrado:
     influencer_id: str
     nombre: str
     email: str
-    timestamp: int

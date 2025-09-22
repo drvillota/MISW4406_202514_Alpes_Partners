@@ -5,12 +5,10 @@ from .reglas import IdEntidadEsInmutable
 from .excepciones import IdDebeSerInmutableExcepcion
 from datetime import datetime
 import uuid
-
-@dataclass
+@dataclass(kw_only=True)
 class Entidad:
-    id: uuid.UUID = field(hash=True)
-    _id: uuid.UUID = field(init=False, repr=False, hash=True)
-    fecha_creacion: datetime =  field(default=datetime.now())
+    id: uuid.UUID = field(default_factory=uuid.uuid4, init=True)
+    fecha_creacion: datetime = field(default_factory=datetime.now)
 
     @classmethod
     def siguiente_id(self) -> uuid.UUID:

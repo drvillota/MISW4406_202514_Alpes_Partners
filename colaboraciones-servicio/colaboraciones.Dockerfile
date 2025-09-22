@@ -22,4 +22,4 @@ EXPOSE 8080
 
 # Ejecuta uvicorn apuntando a main.py que está en /app/src/main.py
 # Nota: usamos main:app porque ahora el WORKDIR es /app/src
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]

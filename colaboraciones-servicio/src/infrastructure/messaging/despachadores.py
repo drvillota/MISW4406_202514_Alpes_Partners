@@ -153,3 +153,11 @@ class ColaboracionPublisher:
     def close(self):
         """Cerrar despachador"""
         self.despachador.close()
+        
+    def publicar_ping(self):
+        evento = {
+            "event_type": "PingTest",
+            "mensaje": "pong?",
+            "timestamp": int(datetime.now(timezone.utc).timestamp())
+        }
+        return self.despachador.publicar_evento("diagnostico", evento)

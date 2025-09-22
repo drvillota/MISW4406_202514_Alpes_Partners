@@ -2,7 +2,6 @@
 
 from uuid import UUID
 from typing import List, Optional
-from datetime import date
 from sqlalchemy.orm import Session
 
 from .comandos import (
@@ -13,8 +12,9 @@ from .comandos import (
     RegistrarPublicacionComando,
 )
 from .servicios import ColaboracionService, PublicacionService
-from ..domain.entidades import Colaboracion, Publicacion
+from domain.entidades import Colaboracion, Publicacion
 from .queries import ConsultarColaboracionQuery, ListarColaboracionesQuery
+
 
 class CommandHandler:
     """Handler unificado para comandos (escritura)"""
@@ -25,14 +25,14 @@ class CommandHandler:
         self.publicacion_service = PublicacionService(session)
 
     def handle_iniciar_colaboracion(self, command: IniciarColaboracionComando) -> str:
-        """Iniciar nueva colaboración"""
+        """Iniciar nueva colaboración usando contrato ya existente"""
         try:
             colaboracion = self.colaboracion_service.iniciar_colaboracion(
                 campania_id=command.campania_id,
                 influencer_id=command.influencer_id,
-                contrato_periodo=(command.fecha_inicio, command.fecha_fin),
+                contrato_id=command.contrato_id,   # 👈 ahora se pasa el contrato existente
             )
-            return str(colaboracion.id.codigo)
+            return str(colaboracion.id)
         except Exception:
             self.session.rollback()
             raise
@@ -100,10 +100,8 @@ class QueryHandler:
         self, query: ListarColaboracionesQuery
     ) -> List[Colaboracion]:
         """Listar colaboraciones con filtros opcionales"""
+        return self.colaboracion_service.listar_colaboraciones()
 
-        colaboraciones = self.colaboracion_service.listar_colaboraciones()
-
-        return colaboraciones
 
 # Factory para crear handlers
 def create_handlers(session: Session):
