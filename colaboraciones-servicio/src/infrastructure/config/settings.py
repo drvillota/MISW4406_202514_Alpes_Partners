@@ -5,13 +5,13 @@ class Settings:
     """Configuración simplificada del servicio de colaboraciones"""
     
     def __init__(self):
-        # Base de datos - usar variable de entorno o default para desarrollo local
+        # Base de datos
         self.DATABASE_URL = os.getenv(
             "DATABASE_URL", 
             "postgresql+psycopg2://colaboraciones:colaboraciones@localhost:5432/colaboraciones"
         )
         
-        # Pulsar - usar BROKER_HOST si existe (para Docker), sino PULSAR_HOST
+        # Pulsar
         pulsar_host = os.getenv("BROKER_HOST") or os.getenv("PULSAR_HOST", "localhost")
         self.PULSAR_HOST = pulsar_host
         self.PULSAR_PORT = int(os.getenv("PULSAR_PORT", "6650"))

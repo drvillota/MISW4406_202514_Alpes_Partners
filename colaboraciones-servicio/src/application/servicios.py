@@ -85,8 +85,6 @@ class ColaboracionService:
         self.colaboracion_repo.agregar(colaboracion)
         return colaboracion
 
-    # … firmar_contrato, cancelar_contrato, finalizar_colaboracion, etc.
-
 
 class PublicacionService:
     """Servicio de dominio para publicaciones"""

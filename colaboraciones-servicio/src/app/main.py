@@ -7,7 +7,7 @@ import logging
 
 from fastapi import FastAPI
 from infrastructure.database.connection import Base, engine, SessionLocal
-from infrastructure.messaging.despachadores import ColaboracionPublisher
+from infrastructure.messaging.despachadores import Despachador, ColaboracionPublisher
 from infrastructure.messaging.consumidores import ColaboracionEventConsumer
 from entrypoints.router import router
 from entrypoints.util_router import router as util_router
@@ -44,6 +44,7 @@ logging.getLogger("asyncio").setLevel(logging.WARNING)
 
 app_configs: dict[str, Any] = {"title": "Colaboraciones (Pulsar)"}
 
+
 def ensure_topic(topic_name: str, schema_class) -> None:
     """Forzar creación del tópico con schema Avro"""
     try:
@@ -57,6 +58,7 @@ def ensure_topic(topic_name: str, schema_class) -> None:
         logger.info(f"Tópico asegurado con Avro: {topic_name}")
     except Exception as e:
         logger.error(f"No se pudo asegurar el tópico {topic_name}: {e}")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -73,8 +75,12 @@ async def lifespan(app: FastAPI):
         ensure_topic("persistent://public/default/publicaciones-registradas", PublicacionRegistradaSchema)
         ensure_topic("persistent://public/default/colaboracion-eventos", ColaboracionIniciadaSchema)
 
-        # Publisher
-        app.state.publisher = ColaboracionPublisher()
+        # Instancia única del despachador
+        despachador = Despachador()
+        despachador.connect()
+
+        # Publisher compartiendo el mismo despachador
+        app.state.publisher = ColaboracionPublisher(despachador)
         logger.info(f"Publisher conectado a {settings.pulsar_url}")
 
         # Crear sesión y registrar handlers
@@ -140,8 +146,8 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Error cerrando servicio: {e}")
 
+
 app = FastAPI(lifespan=lifespan, **app_configs)
-app.include_router(router)
 app.include_router(util_router, prefix="/utils", tags=["Utils"])
 
 if __name__ == "__main__":

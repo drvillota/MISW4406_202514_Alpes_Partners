@@ -14,7 +14,8 @@ class Despachador:
 
     def __init__(self, broker_url: Optional[str] = None):
         self.broker_url = broker_url or "pulsar://broker:6650"
-        self._client = None
+        self._client: Optional[pulsar.Client] = None
+        self._producers: Dict[str, pulsar.Producer] = {}
         self._connected = False
 
     def connect(self):
@@ -33,56 +34,64 @@ class Despachador:
         """Verificar si está conectado"""
         return self._connected
 
+    def _get_producer(self, topico: str) -> pulsar.Producer:
+        """Obtener un producer (cacheado) para el tópico"""
+        if not self._connected:
+            self.connect()
+
+        if not topico.startswith("persistent://"):
+            topico = f"persistent://public/default/{topico}"
+
+        if topico not in self._producers:
+            self._producers[topico] = self._client.create_producer(topico)
+            logger.info(f"Producer creado para tópico {topico}")
+
+        return self._producers[topico]
+
     def publicar_evento(self, topico: str, evento: Dict[str, Any]) -> bool:
-        """Publicar evento simple en un tópico"""
+        """Publicar evento en un tópico"""
         try:
-            if not self._connected:
-                self.connect()
-
-            if not self._client:
-                logger.error("Cliente Pulsar no disponible")
-                return False
-
-            if not topico.startswith("persistent://"):
-                topico = f"persistent://public/default/{topico}"
-
-            producer = self._client.create_producer(topico)
+            producer = self._get_producer(topico)
             mensaje_json = json.dumps(evento)
-
             producer.send(mensaje_json.encode("utf-8"))
-            producer.close()
 
             logger.info(
-                f"✅ Evento enviado a '{topico}': {evento.get('event_type', 'Unknown')}"
+                f"Evento enviado a '{topico}': {evento.get('event_type', 'Unknown')}"
             )
             return True
-
         except Exception as e:
-            logger.error(f"❌ Error publicando evento: {e}")
+            logger.error(f"Error publicando evento: {e}")
             return False
 
     def close(self):
-        """Cerrar conexiones"""
+        """Cerrar productores y cliente"""
         try:
+            for topico, producer in self._producers.items():
+                try:
+                    producer.close()
+                    logger.info(f"Producer cerrado para tópico {topico}")
+                except Exception as e:
+                    logger.warning(f"No se pudo cerrar producer {topico}: {e}")
+
             if self._client:
                 self._client.close()
+                logger.info("Cliente Pulsar cerrado")
+
+            self._producers.clear()
             self._connected = False
-            logger.info("Despachador cerrado")
         except Exception as e:
             logger.error(f"Error cerrando despachador: {e}")
-
 
 class ColaboracionPublisher:
     """
     Adaptador para publicar eventos específicos del micro de Colaboraciones
     """
 
-    def __init__(self):
-        self.despachador = Despachador()
-        self.despachador.connect()
+    def __init__(self, despachador):
+        # El despachador ahora se inyecta desde main.py
+        self.despachador = despachador
 
     def publicar_colaboracion_iniciada(self, colaboracion):
-        """Publicar evento ColaboracionIniciada"""
         evento = {
             "event_type": "ColaboracionIniciada",
             "colaboracion_id": str(colaboracion.id.codigo),
@@ -97,7 +106,6 @@ class ColaboracionPublisher:
         return self.despachador.publicar_evento("colaboracion-eventos", evento)
 
     def publicar_contrato_firmado(self, contrato_id: str, colaboracion):
-        """Publicar evento ContratoFirmado"""
         evento = {
             "event_type": "ContratoFirmado",
             "contrato_id": contrato_id,
@@ -110,7 +118,6 @@ class ColaboracionPublisher:
         return self.despachador.publicar_evento("colaboracion-eventos", evento)
 
     def publicar_contrato_cancelado(self, contrato_id: str, colaboracion, motivo: str):
-        """Publicar evento ContratoCancelado"""
         evento = {
             "event_type": "ContratoCancelado",
             "contrato_id": contrato_id,
@@ -124,7 +131,6 @@ class ColaboracionPublisher:
         return self.despachador.publicar_evento("colaboracion-eventos", evento)
 
     def publicar_colaboracion_finalizada(self, colaboracion):
-        """Publicar evento ColaboracionFinalizada"""
         evento = {
             "event_type": "ColaboracionFinalizada",
             "colaboracion_id": str(colaboracion.id.codigo),
@@ -136,7 +142,6 @@ class ColaboracionPublisher:
         return self.despachador.publicar_evento("colaboracion-eventos", evento)
 
     def publicar_publicacion_registrada(self, colaboracion, publicacion):
-        """Publicar evento PublicacionRegistrada"""
         evento = {
             "event_type": "PublicacionRegistrada",
             "colaboracion_id": str(colaboracion.id.codigo),
@@ -150,10 +155,6 @@ class ColaboracionPublisher:
         }
         return self.despachador.publicar_evento("publicaciones-registradas", evento)
 
-    def close(self):
-        """Cerrar despachador"""
-        self.despachador.close()
-        
     def publicar_ping(self):
         evento = {
             "event_type": "PingTest",
@@ -161,3 +162,7 @@ class ColaboracionPublisher:
             "timestamp": int(datetime.now(timezone.utc).timestamp())
         }
         return self.despachador.publicar_evento("diagnostico", evento)
+
+    def close(self):
+        """Cerrar despachador"""
+        self.despachador.close()

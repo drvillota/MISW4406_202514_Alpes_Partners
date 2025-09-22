@@ -177,7 +177,7 @@ def seed_colaboracion(payload: ColaboracionIn, session: Session = Depends(get_se
     return {"colaboracion_id": str(m.id)}
 
 # --- Endpoints de diagnóstico Pulsar ---
-PULSAR_ADMIN = "http://broker:8080/admin/v2"  # dentro de Docker, "broker"; fuera sería localhost:8080
+PULSAR_ADMIN = "http://broker:8080/admin/v2" 
 
 @router.get("/utils/dev/pulsar/topics")
 def listar_topics():
@@ -192,7 +192,6 @@ def listar_topics():
 @router.get("/utils/dev/pulsar/subscriptions/{topic}")
 def listar_subs(topic: str):
     try:
-        # topic debe venir con formato correcto ej: publicaciones-registradas
         pulsar_topic = f"persistent://public/default/{topic}"
         r = requests.get(f"{PULSAR_ADMIN}/persistent/public/default/{topic}/subscriptions")
         r.raise_for_status()
@@ -220,10 +219,8 @@ def pulsar_health():
         resp = requests.get(broker_admin, timeout=5)
         if resp.status_code == 200:
             try:
-                # Intentar decodificar JSON
                 return {"status": "ok", "detail": resp.json()}
             except Exception:
-                # Si no es JSON, devolver como texto
                 return {"status": "ok", "detail": resp.text or "Broker healthy"}
         else:
             return {"status": "error", "detail": f"Unexpected status {resp.status_code}"}

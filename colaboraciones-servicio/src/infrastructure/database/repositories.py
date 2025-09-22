@@ -129,7 +129,7 @@ class ColaboracionRepository:
         # Actualizar estado
         model.estado = colaboracion.estado.valor
 
-        # Actualizar publicaciones (serializadas como lista de dicts)
+        # Actualizar publicaciones 
         if colaboracion.publicaciones:
             model.publicaciones = [
                 {

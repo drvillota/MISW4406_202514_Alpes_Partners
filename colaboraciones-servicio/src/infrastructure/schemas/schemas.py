@@ -10,14 +10,14 @@ class BaseEventSchema(Record):
     colaboracion_id = String()
     campania_id = String()
     influencer_id = String()
-    timestamp = Integer()  # Unix timestamp
+    timestamp = Integer() 
 
 
 class ColaboracionIniciadaSchema(BaseEventSchema):
     """Evento: se inició una colaboración"""
     contrato_id = String()
-    fecha_inicio = String()  # ISO8601
-    fecha_fin = String()     # ISO8601
+    fecha_inicio = String()
+    fecha_fin = String() 
 
 
 class ContratoFirmadoSchema(BaseEventSchema):
@@ -40,7 +40,7 @@ class PublicacionRegistradaSchema(BaseEventSchema):
     """Evento: un influencer registró una publicación en la colaboración"""
     url = String()
     red = String()
-    fecha = String()  # ISO8601
+    fecha = String()
 
 
 ####################################

@@ -14,8 +14,8 @@ class ColaboracionIniciada:
     campania_id: str
     influencer_id: str
     contrato_id: str
-    fecha_inicio: str  # ISO8601 string
-    fecha_fin: str     # ISO8601 string
+    fecha_inicio: str 
+    fecha_fin: str 
 
 
 @dataclass
