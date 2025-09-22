@@ -9,7 +9,6 @@ from fastapi import FastAPI
 from infrastructure.database.connection import Base, engine, SessionLocal
 from infrastructure.messaging.despachadores import Despachador, ColaboracionPublisher
 from infrastructure.messaging.consumidores import ColaboracionEventConsumer
-from entrypoints.router import router
 from entrypoints.util_router import router as util_router
 from infrastructure.config.settings import get_settings
 from core.seedworks.message_bus import bus

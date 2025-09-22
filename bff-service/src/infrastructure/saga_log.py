@@ -48,7 +48,7 @@ class SagaTransaction:
     created_at: datetime
     updated_at: datetime
     correlation_id: Optional[str] = None
-    metadata: Optional[Dict[str, Any]] = None
+    saga_metadata: Optional[Dict[str, Any]] = None
 
 
 class SagaLogModel(Base):
@@ -61,7 +61,7 @@ class SagaLogModel(Base):
     created_at = Column(DateTime(timezone=True), nullable=False)
     updated_at = Column(DateTime(timezone=True), nullable=False)
     correlation_id = Column(String, nullable=True)
-    metadata = Column(JSONB, nullable=True)
+    saga_metadata = Column(JSONB, nullable=True)
 
 
 class SagaLogRepository:
@@ -94,7 +94,7 @@ class SagaLogRepository:
         return self.SessionLocal()
     
     async def start_saga(self, saga_id: str, saga_type: str, correlation_id: Optional[str] = None, 
-                        metadata: Optional[Dict[str, Any]] = None) -> SagaTransaction:
+                        saga_metadata: Optional[Dict[str, Any]] = None) -> SagaTransaction:
         """Iniciar nueva saga"""
         session = self._get_session()
         try:
@@ -107,7 +107,7 @@ class SagaLogRepository:
                 created_at=now,
                 updated_at=now,
                 correlation_id=correlation_id,
-                metadata=metadata or {}
+                saga_metadata=saga_metadata or {}
             )
             
             session.add(saga_model)
@@ -121,7 +121,7 @@ class SagaLogRepository:
                 created_at=now,
                 updated_at=now,
                 correlation_id=correlation_id,
-                metadata=metadata
+                saga_metadata=saga_metadata
             )
             
             logger.info(f"Saga iniciada: {saga_id} - {saga_type}")
@@ -209,7 +209,7 @@ class SagaLogRepository:
                 created_at=saga_model.created_at,
                 updated_at=saga_model.updated_at,
                 correlation_id=saga_model.correlation_id,
-                metadata=saga_model.metadata
+                saga_metadata=saga_model.saga_metadata
             )
             
         except Exception as e:
@@ -247,7 +247,7 @@ class SagaLogRepository:
                     created_at=saga_model.created_at,
                     updated_at=saga_model.updated_at,
                     correlation_id=saga_model.correlation_id,
-                    metadata=saga_model.metadata
+                    saga_metadata=saga_model.saga_metadata
                 ))
             
             return sagas
