@@ -107,7 +107,7 @@ async def run_all_experiments():
     
     # Resumen final
     print("\n" + "="*70)
-    print("📋 RESUMEN FINAL DE EXPERIMENTOS")
+    print("RESUMEN FINAL DE EXPERIMENTOS")
     print("="*70)
     
     overall_success = True
@@ -136,10 +136,10 @@ async def run_all_experiments():
     with open("experiments_summary.json", "w") as f:
         json.dump(results_summary, f, indent=2)
     
-    print(f"\n🎯 CONCLUSIÓN GENERAL")
+    print(f"\nCONCLUSIÓN GENERAL")
     print("="*30)
     print(results_summary["conclusion"])
-    print(f"\n💾 Resumen consolidado guardado en: experiments_summary.json")
+    print(f"\nResumen consolidado guardado en: experiments_summary.json")
     
     return results_summary
 
@@ -159,7 +159,7 @@ Para ejecutar experimentos por separado:
 3. Experimento de Observabilidad:
    python observability_experiment.py
 
-📋 PREREQUISITOS:
+PREREQUISITOS:
 - BFF Service ejecutándose en http://localhost:8000
 - Instalar dependencias: pip install aiohttp asyncio
 - Docker containers activos (usar docker-compose up)

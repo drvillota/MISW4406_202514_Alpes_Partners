@@ -24,7 +24,7 @@ class SagaOrchestrator:
     
     async def execute_complete_affiliate_registration(self, saga_id: str, request_data) -> bool:
         """
-        🎯 Ejecuta la saga completa de registro de afiliado
+        Ejecuta la saga completa de registro de afiliado
         
         Pasos:
         1. Crear contenido base en lealtad-contenido
@@ -146,7 +146,7 @@ class SagaOrchestrator:
     async def _step_3_create_collaboration(self, saga_id: str, request_data, step_2_data) -> Dict[str, Any]:
         """Paso 3: Crear colaboración en colaboraciones-servicio"""
         try:
-            logger.info(f"🤝 Step 3: Creating collaboration for saga {saga_id}")
+            logger.info(f"Step 3: Creating collaboration for saga {saga_id}")
             
             payload = {
                 "affiliate_id": step_2_data["affiliate_id"],

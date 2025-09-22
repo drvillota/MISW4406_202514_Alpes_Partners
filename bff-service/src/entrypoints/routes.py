@@ -63,7 +63,7 @@ async def complete_affiliate_registration(
     saga_repo: SagaLogRepository = Depends(get_saga_repository)
 ):
     """
-    🎯 SAGA PRINCIPAL: Registro Completo de Afiliado con Contenido
+    SAGA PRINCIPAL: Registro Completo de Afiliado con Contenido
     
     Esta saga orquesta los siguientes pasos:
     1. Crear afiliado en lealtad-contenido

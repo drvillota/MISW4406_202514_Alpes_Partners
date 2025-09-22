@@ -57,7 +57,7 @@ async def lifespan(app: FastAPI):
         query_handler = handlers['query_handler']
         
         # Registrar handlers en el message bus
-        logger.info(f"🔧 Registrando handler para: {RegistrarContentCommand}")
+        logger.info(f"Registrando handler para: {RegistrarContentCommand}")
         bus.register_command(RegistrarContentCommand, command_handler.handle_registrar_content)
         logger.info(f"Handler registrado para RegistrarContentCommand")
 
@@ -70,7 +70,7 @@ async def lifespan(app: FastAPI):
             else:
                 return qry_handler.handle_list_contents(query)
 
-        logger.info(f"🔧 Registrando handler para: {ConsultarContenidosPorAfiliadoQuery}")
+        logger.info(f"Registrando handler para: {ConsultarContenidosPorAfiliadoQuery}")
         bus.register_command(ConsultarContenidosPorAfiliadoQuery, query_wrapper)
         logger.info(f"Handler registrado para ConsultarContenidosPorAfiliadoQuery")
 

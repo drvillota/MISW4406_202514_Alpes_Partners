@@ -321,7 +321,7 @@ async def main():
             json.dump(results, f, indent=2)
         
         # Mostrar resumen
-        print("\n📋 RESULTADOS DEL EXPERIMENTO")
+        print("\nRESULTADOS DEL EXPERIMENTO")
         print("=" * 40)
         print(f"Status: {results['status']}")
         print(f"Escenarios normales exitosos: {results['results']['normal_scenarios_analysis']['successful']}/{results['results']['normal_scenarios_analysis']['total']}")
@@ -329,11 +329,11 @@ async def main():
         print(f"Score de resiliencia: {results['results']['overall_resilience']['resilience_score']}%")
         print(f"Tiempo promedio de recuperación: {results['results']['failing_scenarios_analysis']['avg_recovery_time_ms']}ms")
         print()
-        print("🎯 VALIDACIÓN DE HIPÓTESIS")
+        print("VALIDACIÓN DE HIPÓTESIS")
         print("=" * 30)
         print(results['conclusion']['summary'])
         
-        print(f"\n💾 Resultados guardados en: resilience_experiment_results.json")
+        print(f"\nResultados guardados en: resilience_experiment_results.json")
         
     except Exception as e:
         print(f"Error en experimento: {e}")

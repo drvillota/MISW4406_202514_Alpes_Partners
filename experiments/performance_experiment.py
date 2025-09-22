@@ -243,7 +243,7 @@ async def main():
             json.dump(results, f, indent=2)
         
         # Mostrar resumen
-        print("\n📋 RESULTADOS DEL EXPERIMENTO")
+        print("\nRESULTADOS DEL EXPERIMENTO")
         print("=" * 40)
         print(f"Status: {results['status']}")
         print(f"Requests exitosos: {results['results']['successful_requests']}/{results['results']['total_requests']}")
@@ -252,11 +252,11 @@ async def main():
         print(f"Latencia media: {results['results']['latency_stats']['mean_ms']}ms")
         print(f"Latencia P95: {results['results']['latency_stats']['p95_ms']}ms")
         print()
-        print("🎯 VALIDACIÓN DE HIPÓTESIS")
+        print("VALIDACIÓN DE HIPÓTESIS")
         print("=" * 30)
         print(results['conclusion']['summary'])
         
-        print(f"\n💾 Resultados guardados en: performance_experiment_results.json")
+        print(f"\nResultados guardados en: performance_experiment_results.json")
         
     except Exception as e:
         print(f"Error en experimento: {e}")

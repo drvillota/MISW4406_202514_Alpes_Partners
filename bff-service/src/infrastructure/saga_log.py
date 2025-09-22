@@ -124,7 +124,7 @@ class SagaLogRepository:
                 metadata=metadata
             )
             
-            logger.info(f"📋 Saga iniciada: {saga_id} - {saga_type}")
+            logger.info(f"Saga iniciada: {saga_id} - {saga_type}")
             return saga_transaction
             
         except Exception as e:

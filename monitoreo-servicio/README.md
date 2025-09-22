@@ -18,7 +18,7 @@ con persistencia en **PostgreSQL** y consumo de eventos desde **Apache Pulsar**.
 
 ---
 
-## 🏗️ Arquitectura
+## Arquitectura
 
 ### **Arquitectura Hexagonal (Ports & Adapters)**
 - **Core**: Lógica de negocio y entities
@@ -243,7 +243,7 @@ UVICORN_HOST=0.0.0.0
 
 ---
 
-## 🔧 Desarrollo Local
+## Desarrollo Local
 
 ### **Sin Docker:**
 ```bash
@@ -269,7 +269,7 @@ python -m src.app.main
 
 ---
 
-## 🎯 Casos de Uso
+## Casos de Uso
 
 ### **1. Dashboard de Métricas en Tiempo Real**
 - Consultar `/metrics?period=1h` cada minuto

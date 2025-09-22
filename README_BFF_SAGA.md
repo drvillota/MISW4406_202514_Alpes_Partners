@@ -1,15 +1,15 @@
-# 🎯 BFF CSaaS - Patrón Saga Implementation
+# BFF CSaaS - Patrón Saga Implementation
 
-## 📋 Descripción del Proyecto
+## Descripción del Proyecto
 
 Este proyecto implementa un **Backend for Frontend (BFF)** con el patrón **Saga** para manejar transacciones distribuidas en una plataforma **Content as a Service (CSaaS)**. El sistema orquesta múltiples microservicios para completar el registro de afiliados con contenido usando compensaciones automáticas.
 
-## 🏗️ Arquitectura del Sistema
+## Arquitectura del Sistema
 
 ### Microservicios Incluidos
-- **🎨 Lealtad-Contenido**: Gestión de contenido y programas de lealtad
-- **💰 Afiliados-Comisiones**: Manejo de afiliados y cálculo de comisiones  
-- **🤝 Colaboraciones**: Gestión de colaboraciones entre creadores
+- **Lealtad-Contenido**: Gestión de contenido y programas de lealtad
+- **Afiliados-Comisiones**: Manejo de afiliados y cálculo de comisiones  
+- **Colaboraciones**: Gestión de colaboraciones entre creadores
 - **Monitoreo**: Recolección y análisis de métricas del sistema
 - **BFF-Service**: Backend for Frontend con orquestación de sagas
 
@@ -84,7 +84,7 @@ curl http://localhost:8000/api/v1/health/sagas
 
 ### Casos de Prueba Incluidos
 
-#### 1. 🎯 Saga Principal
+#### 1. Saga Principal
 - **Iniciar Saga**: Registro completo de afiliado
 - **Consultar Estado**: Monitoreo en tiempo real
 - **Listar Sagas**: Ver historial de transacciones
@@ -94,7 +94,7 @@ curl http://localhost:8000/api/v1/health/sagas
 - **Forzar Compensación**: Para testing de fallos
 - **Health Checks**: Verificación de servicios
 
-#### 3. 💾 Casos de Prueba Específicos
+#### 3. Casos de Prueba Específicos
 - **Caso 1**: Saga exitosa completa
 - **Caso 2**: Email duplicado (falla controlada)
 - **Caso 3**: Tasa de comisión inválida
@@ -132,7 +132,7 @@ python run_all_experiments.py
 
 #### Experimentos Individuales
 
-1. **📈 Rendimiento**
+1. **Rendimiento**
 ```bash
 python performance_experiment.py
 ```
@@ -201,7 +201,7 @@ curl "http://localhost:8000/api/v1/sagas?limit=10&status=COMPLETED"
 curl http://localhost:8000/api/v1/sagas/{SAGA_ID}/status
 ```
 
-## 🎥 Para el Video de Demostración
+## Para el Video de Demostración
 
 ### 1. Flujo Exitoso Completo
 ```bash
@@ -229,7 +229,7 @@ python run_all_experiments.py
 # Mostrar resultados y validación de hipótesis
 ```
 
-## 🔧 Troubleshooting
+## Troubleshooting
 
 ### Problemas Comunes
 
@@ -271,7 +271,7 @@ docker-compose logs afiliados-comisiones
 docker-compose logs broker
 ```
 
-## 📚 Documentación Adicional
+## Documentación Adicional
 
 ### Principios DDD Aplicados
 
@@ -298,8 +298,6 @@ docker-compose logs broker
 
 ---
 
-## 📞 Contacto y Soporte
+## Contacto y Soporte
 
 Para preguntas sobre la implementación, revisar los logs detallados y la documentación de cada experimento en la carpeta `experiments/`.
-
-**¡El sistema está listo para la demostración en video! 🎬**

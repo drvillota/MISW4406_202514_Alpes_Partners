@@ -349,7 +349,7 @@ TEST_STATUS=$(echo $TEST_PUBLISH | jq -r '.status')
 echo "Estado de publicación: $TEST_STATUS"
 
 # Registrar conversión
-echo "💰 Paso 2: Registrando conversión..."
+echo "Paso 2: Registrando conversión..."
 CONVERSION_RESPONSE=$(curl -s -X POST "http://localhost:8081/dev/conversions" \
   -H "Content-Type: application/json" \
   -d "{
@@ -367,7 +367,7 @@ echo "Esperando procesamiento de eventos..."
 sleep 3
 
 # Verificar topics creados
-echo "📋 Verificando topics de Pulsar..."
+echo "Verificando topics de Pulsar..."
 TOPICS_RESPONSE=$(curl -s "http://localhost:8081/dev/pulsar/topics")
 echo $TOPICS_RESPONSE | jq '.count, .topics[]' 2>/dev/null || echo "Topics: $TOPICS_RESPONSE"
 
@@ -377,7 +377,7 @@ COMMISSIONS=$(curl -s "http://localhost:8081/affiliates/$AFFILIATE_ID/commission
 echo $COMMISSIONS | jq '.' 2>/dev/null || echo "Comisiones: $COMMISSIONS"
 
 echo "🎉 Prueba completada exitosamente!"
-echo "📈 Resumen:"
+echo "Resumen:"
 echo "   - Pulsar: $PULSAR_STATUS"
 echo "   - Publicación: $TEST_STATUS"  
 echo "   - Afiliado: $AFFILIATE_ID"
@@ -474,7 +474,7 @@ curl -X POST "http://localhost:8081/dev/pulsar/test-publish"
 
 ---
 
-## 🔧 Troubleshooting y Diagnóstico
+## Troubleshooting y Diagnóstico
 
 ### Verificar Estado de los Servicios
 
@@ -638,7 +638,7 @@ curl http://localhost:8080/admin/v2/persistent/public/default
 
 ---
 
-## 🎯 Métricas y Monitoreo
+## Métricas y Monitoreo
 
 ### Métricas de Negocio
 

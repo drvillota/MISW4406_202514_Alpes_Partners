@@ -1,29 +1,26 @@
 {
   "info": {
+    "_postman_id": "12345678-1234-1234-1234-123456789012",
     "name": "BFF CSaaS - Saga Pattern Demo",
-    "description": "Backend for Frontend - Content as a Service Platform\nDemostración del patrón Saga para transacciones distribuidas",
-    "version": "1.0.0",
-    "contact": {
-      "name": "CSaaS Team",
-      "email": "admin@csaas.com"
-    }
+    "description": "Backend for Frontend - Content as a Service Platform\\nDemostración del patrón Saga para transacciones distribuidas",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
   },
   "variable": [
     {
       "key": "bff_base_url",
       "value": "http://localhost:8000",
-      "description": "URL base del BFF Service"
+      "type": "string"
     },
     {
       "key": "saga_id",
       "value": "",
-      "description": "ID de saga para seguimiento (se actualiza automáticamente)"
+      "type": "string"
     }
   ],
   "item": [
     {
-      "name": "🎯 SAGA PRINCIPAL",
-      "description": "Endpoints principales para ejecutar y monitorear sagas",
+      "name": "SAGA PRINCIPAL",
       "item": [
         {
           "name": "Iniciar Saga - Registro Completo de Afiliado",
@@ -200,7 +197,7 @@
       ]
     },
     {
-      "name": "💾 CASOS DE PRUEBA ESPECÍFICOS",
+      "name": "CASOS DE PRUEBA ESPECÍFICOS",
       "description": "Casos de prueba para diferentes escenarios de saga",
       "item": [
         {
@@ -272,7 +269,7 @@
       ]
     },
     {
-      "name": "🏥 HEALTH CHECKS",
+      "name": "HEALTH CHECKS",
       "description": "Verificación de estado de servicios",
       "item": [
         {

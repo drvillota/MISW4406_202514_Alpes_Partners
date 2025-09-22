@@ -377,7 +377,7 @@ async def main():
             json.dump(results, f, indent=2)
         
         # Mostrar resumen
-        print("\n📋 RESULTADOS DEL EXPERIMENTO")
+        print("\nRESULTADOS DEL EXPERIMENTO")
         print("=" * 40)
         print(f"Status: {results['status']}")
         print(f"Sagas creadas: {results['results']['saga_creation']['successful']}/{results['results']['saga_creation']['attempted']}")
@@ -385,11 +385,11 @@ async def main():
         print(f"Tiempo promedio de consulta: {results['results']['individual_queries']['avg_query_time_ms']}ms")
         print(f"Trazabilidad completa: {results['results']['traceability']['traceability_rate']}%")
         print()
-        print("🎯 VALIDACIÓN DE HIPÓTESIS")
+        print("VALIDACIÓN DE HIPÓTESIS")
         print("=" * 30)
         print(results['conclusion']['summary'])
         
-        print("\n💾 Resultados guardados en: observability_experiment_results.json")
+        print("\nResultados guardados en: observability_experiment_results.json")
         
     except Exception as e:
         print(f"Error en experimento: {e}")
