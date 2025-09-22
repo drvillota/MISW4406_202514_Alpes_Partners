@@ -13,7 +13,7 @@ import asyncio
 from typing import Callable, Any, Dict, Awaitable
 import aiopulsar
 from pulsar.schema import AvroSchema, Record
-from ..schemas.event_schema import ConversionEventSchema, ClickEventSchema, SaleEventSchema
+from ..schemas.event_schema import ConversionEventSchema, ClickEventSchema, SaleEventSchema, PublicacionRegistradaSchema
 from ..config.settings import get_settings
 from .event_mapper import PulsarEventMapper
 
@@ -40,7 +40,8 @@ class EventConsumerService:
             self.consumer_tasks = [
                 asyncio.create_task(self.consume_conversions()),
                 asyncio.create_task(self.consume_clicks()),
-                asyncio.create_task(self.consume_sales())
+                asyncio.create_task(self.consume_sales()),
+                asyncio.create_task(self.consume_publicaciones_registradas())
             ]
             
             logger.info("Starting all event consumers...")
@@ -56,7 +57,8 @@ class EventConsumerService:
         topics_to_create = [
             "persistent://public/default/conversion-events",
             "persistent://public/default/clicks",
-            "persistent://public/default/sales"
+            "persistent://public/default/sales",
+            "persistent://public/default/publicaciones-registradas"
         ]
         
         try:
@@ -116,6 +118,15 @@ class EventConsumerService:
             topic="sales",
             subscription="monitor-sales",
             event_mapper=self.event_mapper.map_sale_event,
+            consumer_type=_pulsar.ConsumerType.Shared
+        )
+
+    async def consume_publicaciones_registradas(self):
+        """Consume eventos de publicaciones registradas"""
+        await self._consume_topic_with_retry(
+            topic="publicaciones-registradas",
+            subscription="monitor-publicaciones",
+            event_mapper=self.event_mapper.map_publicacion_event,
             consumer_type=_pulsar.ConsumerType.Shared
         )
 
